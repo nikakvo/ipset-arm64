@@ -43,7 +43,7 @@ su -c "iptables -A OUTPUT -m set --match-set myservers dst -j MARK --set-mark 1"
 - Cross-compiled with Android NDK (aarch64-linux-android, API 29)
 - Statically linked against `libmnl` (netlink communication library)
 - Dynamically linked against Android's bionic libc/libdl (standard for NDK-built binaries — full static linking is not supported on Android)
-- Built from upstream sources: [ipset](https://git.netfilter.org/ipset) + [libmnl](https://git.netfilter.org/libmnl)
+- Built from upstream sources: [ipset](https://git.netfilter.org/ipset) ([GitHub mirror](https://github.com/Olipro/ipset)) + [libmnl](https://git.netfilter.org/libmnl) ([GitHub mirror](https://github.com/Distrotech/libmnl))
 
 ## Version compatibility
 
