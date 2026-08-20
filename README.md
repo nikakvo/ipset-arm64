@@ -30,6 +30,8 @@ Typical uses: blocking a known-bad server by IP, blocking an entire hosting rang
 3. Reboot
 4. Open the module's WebUI from your manager (or verify manually: `su -c ipset -v`)
 
+<img width="300" alt="ipset-arm64" src="https://raw.githubusercontent.com/nikakvo/ipset-arm64/refs/heads/main/ipset-arm64.jpg" />
+
 ## Usage
 
 ### Via the WebUI (recommended)
