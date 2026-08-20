@@ -1,6 +1,6 @@
 {
-  "version": "v7.24-r1",
-  "versionCode": 1,
+  "version": "v7.24-r2",
+  "versionCode": 2,
   "zipUrl": "https://github.com/nikakvo/ipset-arm64/releases/download/v7.24-r1/ipset_arm64.zip",
   "changelog": "https://raw.githubusercontent.com/nikakvo/ipset-arm64/main/CHANGELOG.md"
 }
