@@ -2,6 +2,27 @@
 
 All notable changes to this module are documented here.
 
+## ipset-arm64-v7.24-r3
+
+### Added
+- **Config section (03) redesigned into 3 independent rule slots per set** — supports up to 3 simultaneous firewall rules on the same set (e.g. block both `INPUT` and `OUTPUT` at once, or apply different targets per direction). Each slot tracks its own identity across refreshes; enabling slot 2 stays in slot 2, never gets reshuffled to slot 1.
+- **Config is now fully decoupled from Set Detail** — has its own independent set selector, separate from tapping a tile in Sets. Managing rules never requires scrolling past a set's member list, no matter how large (tested against a 1600+ entry feed set).
+- **Set Detail (member editor) repositioned** directly under Sets, accordion-style — tap a tile to open, tap again to close, no page navigation needed.
+- **Duplicate rule prevention** — attempting to enable a chain/direction/target combination already active in another slot is blocked with an on-screen warning instead of silently creating a redundant tracking entry.
+- **Threat Feeds panel (06)** — new managed set `feed_spamhaus_drop`, sourced from [Spamhaus DROP v4](https://www.spamhaus.org/drop/drop_v4.json). "Update Now" for manual refresh (atomic swap, zero traffic gap), "Enable auto (24h)" toggle for background refresh every 24 hours (resumes automatically after reboot if left on, off by default). Feed-managed sets are tagged with an orange **FEED** badge in the Sets list.
+- `ipctl.sh` gained three commands: `feed-update`, `feed-status`, `feed-auto {on|off|status}`.
+- `service.sh` resumes the threat feed auto-update loop after reboot if it was previously enabled.
+- `uninstall.sh` now also stops the threat feed auto-update loop and removes its state on module removal.
+- **HELP badge** added to the WebUI header, linking directly to in-app documentation.
+- `webroot/help.html` fully rewritten to match the new architecture: Config's 3-slot system, Threat Feeds, corrected section numbering throughout, expanded command reference.
+
+### Changed
+- **Clear** (Command Log) button restyled red to match other destructive actions; **Refresh** buttons restyled cyan for visual consistency with other read/info actions.
+- Command reference docs now cover multi-rule usage (calling `rule-add` again with a different chain/direction to stack up to 3 rules on one set).
+
+### Fixed
+- **Config slot reassignment bug** — activating a specific rule slot (e.g. slot 2) could cause a *different* slot (e.g. slot 1) to display as active instead, because slot contents were recalculated positionally from the rules list on every refresh rather than tracking which slot the user actually interacted with. Slot identity is now tracked persistently and independently across refreshes.
+
 ---
 
 ## v7.24-r2
