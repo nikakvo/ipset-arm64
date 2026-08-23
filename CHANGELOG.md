@@ -2,6 +2,29 @@
 
 All notable changes to this module are documented here.
 
+## ipset-arm64-v7.24-r4
+
+### Added
+- **Per-app (per-UID) firewall filtering** — rules can now be scoped to a single Android app instead of applying to the whole device. Uses `iptables`'s `owner` match (`--uid-owner`), restricted to the `OUTPUT` chain, since Android has no way to attribute incoming traffic to a specific app before it's routed.
+- **App search in Config** — type or paste part of a package name to find an installed app from a locally cached list (loaded once, on first tap of the search box), shown as a removable chip once selected.
+- `ipctl.sh` gained the `apps` command (`pm list packages -U`, parsed into `package|uid` pairs) and `rule-add`/`rule-del` accept an optional trailing `uid` argument.
+- **Custom modal system** replacing every native `alert()`/`confirm()` — dark-themed, matches the rest of the UI (cyan info dialogs, red delete confirmations). No more jarring system popups breaking the visual language.
+- **Empty-set protection** — enabling a rule on a set with zero members is now blocked with an explanation instead of silently creating a rule that blocks nothing.
+- **Custom-styled dropdowns** across the whole WebUI — removed native browser appearance, added a matching chevron icon (gray by default, green on focus) and refined hover states, for visual consistency with the rest of the design.
+- Version badge (`v7.24-r4`) added to the WebUI header and Help page.
+- Matching favicon added to both `index.html` and `help.html`.
+- Thousands separators on entry counts (Sets tiles, Threat Feeds status) for readability at scale.
+- `webroot/help.html` updated: full per-app filtering documentation, empty-set behavior, expanded command reference (`apps`, uid-aware `rule-add`/`rule-del` examples).
+
+### Changed
+- `rules.conf` format is backward-compatible: entries stay 4 fields (`chain|set|dir|target`) as before; a 5th `uid` field only appears when per-app filtering is actually used, so existing active rules from prior versions are unaffected by this update.
+- `restore`, `flush-all`, and `uninstall.sh`'s fallback cleanup path all updated to correctly reapply/remove owner-matched (per-app) rules across reboots and on uninstall.
+
+### Fixed
+- Threat Feeds entry count now reflects the real, de-duplicated `ipset` member count (read from the live set after the atomic swap) instead of the raw source JSON line count, which could be a few entries higher when the feed contains overlapping/duplicate CIDRs.
+
+---
+
 ## ipset-arm64-v7.24-r3
 
 ### Added
