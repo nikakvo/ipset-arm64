@@ -2,6 +2,18 @@
 
 All notable changes to this module are documented here.
 
+## ipset-arm64-v7.24-r5
+
+### Added
+- **Live countdown for Threat Feeds auto-update** — when auto-update is enabled, a new "Next update in: Xh Ym Zs" row appears below the toggle, ticking in real time. Persists correctly across page reloads, not just while the WebUI happens to be open.
+- **Clear button for Boot Restore Log** — the log is already capped at 500 lines per boot cycle by `service.sh`, but you can now explicitly wipe it on demand (with a confirmation dialog, since this truncates a real on-disk file, unlike the purely session-based Command Log clear).
+- `ipctl.sh` gained `bootlog-clear`; `feed-status` now also reports `next_update_epoch`, tracked by the auto-update loop before each sleep cycle.
+
+### Fixed
+- **Config set selector losing sync after visiting Help** — navigating to `help.html` and back could leave the set dropdown visually showing a previously-selected set while the firewall rule slots displayed as inactive (browsers/WebViews auto-restore a `<select>`'s visual value across navigation, independent of the page's own JS state, which always starts fresh). The selector is now explicitly reset in sync with the app's actual state on every load, so this mismatch can no longer happen.
+
+---
+
 ## ipset-arm64-v7.24-r4
 
 ### Added
