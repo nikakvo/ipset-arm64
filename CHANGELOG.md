@@ -2,6 +2,15 @@
 
 All notable changes to this module are documented here.
 
+## ipset-arm64 — v7.24-r7
+
+### Fixed
+- **Feed auto-update loop dying silently and never recovering** — the background loop spends nearly all its life in a single long `sleep` (up to 24h), making it an easy target for Android's Doze/battery-optimization/low-memory killer. When killed mid-session, the flag stayed "on" but nothing updated again, and the dashboard's countdown got stuck on "due now" indefinitely. `service.sh` is now a persistent watchdog that checks the loop's health every 5 minutes and respawns it if it's dead while the flag is on — self-heals within minutes regardless of whether the WebUI is ever opened. `feed-status` also self-heals instantly whenever it's called.
+- **Dashboard never reflecting a completed background update** — the countdown row re-rendered every second, but only from a value fetched once on page load; a background auto-update (or the watchdog respawning a dead loop) stayed invisible until the WebUI was fully closed and reopened. `index.html` now polls the real feed status every 30s while the tab is visible, so the dashboard updates live.
+- **Boot-restore log mixing history across boots/flashes** — `service.log` now starts clean on every boot (`service.sh`) and on every install/upgrade (`customize.sh`), instead of accumulating a rolling tail across many boots.
+
+---
+
 ## ipset-arm64-v7.24-r6
 
 ### Fixed
