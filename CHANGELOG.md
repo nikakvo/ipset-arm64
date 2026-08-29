@@ -2,6 +2,13 @@
 
 All notable changes to this module are documented here.
 
+## ipset-arm64-v7.24-r6
+
+### Fixed
+- Feed auto-update could silently die (killed by Android's battery optimizer) and get stuck on "due now" forever until reboot. `service.sh` now watches it every 5 min and restarts it if it's down — self-heals whether or not the dashboard is open.
+
+---
+
 ## ipset-arm64-v7.24-r5
 
 ### Added
