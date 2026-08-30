@@ -2,6 +2,23 @@
 
 All notable changes to this module are documented here.
 
+## v7.24-r8
+
+**⚠ Threat feed auto-update (24h) temporarily removed**
+
+The 24h background auto-update for the threat feed (`feed_firehol_level1`) was causing the same device/ROM compatibility issues as the DNSCrypt module (the background loop wasn't reliably surviving Doze/battery optimization on some devices, leading to a stuck "due now" countdown). To avoid misleading users, this feature has been pulled from this release.
+
+- Removed the "Enable auto (24h)" toggle and countdown from the Threat Feeds card
+- Feed updates are manual-only again via the **Update Now** button — same as before, stable and predictable
+- No more background loop, flags, or schedule files tied to feed auto-update
+- `service.sh` no longer runs a periodic watchdog for this — boot restore of sets/rules is unaffected
+
+Everything else (set/rule management, boot restore, connectivity test, bootlog) is unchanged.
+
+Auto-update will return in a future release once the scheduling logic is reworked and verified to be reliable across devices and ROMs.
+
+---
+
 ## ipset-arm64 — v7.24-r7
 
 ### Fixed
