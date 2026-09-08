@@ -2,6 +2,32 @@
 
 All notable changes to this module are documented here.
 
+## v7.24-r9
+
+**Fixed**
+- `save`, `restore` and `flush-all` operated on every ipset set on the
+  device, not just this module's. That meant adopting other apps' sets
+  into our state file — and destroying them on uninstall. Ownership is
+  now tracked explicitly; existing sets are migrated on upgrade.
+- `destroy` refuses sets this module did not create.
+- `restore` now passes `-exist`. Without it, one pre-existing set
+  aborted the restore and everything after that line was silently
+  skipped.
+- Entry validation rejected valid IPv6 and MAC addresses (IPv4-only
+  regex). Replaced with an injection-safe character check; `ipset`
+  itself validates syntax.
+
+**Changed**
+- All 15 set types supported, including the MAC-keyed ones. New
+  `types` command lists them.
+- `create <name> <type> inet6` for IPv6 sets.
+- `add` / `del` accept multiple entries and save once (bulk loading
+  was quadratic).
+- `status` separates our sets from other apps'. New `owned` command.
+- WebUI type dropdown and help table updated to match.
+
+---
+
 ## v7.24-r8
 
 **⚠ Threat feed auto-update (24h) temporarily removed**
