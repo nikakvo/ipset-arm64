@@ -1,0 +1,7 @@
+id=ipset_arm64
+name=ipset (arm64)
+version=v7.24-r9
+versionCode=9
+author=Tears Burn
+description=Standalone statically-linked ipset binary for arm64 Android
+updateJson=https://raw.githubusercontent.com/nikakvo/ipset-arm64/main/update.json

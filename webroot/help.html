@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0f10">
+<title>ipset-arm64 — Help</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 38'%3E%3Ccircle cx='19' cy='19' r='12' fill='%230d1a18'/%3E%3Cline x1='19' y1='19' x2='19' y2='7' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='31' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='19' y2='31' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='7' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Ccircle cx='19' cy='19' r='5' fill='%230f2a22' stroke='%234affb4' stroke-width='1.6'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f10; --surface: #131618; --surface2: #1a1d20; --border: #252a2e;
+    --accent: #4affb4; --accent2: #00d4ff; --accent3: #ff9f43; --accent4: #ff6b6b;
+    --text: #d4dbe3; --text-dim: #6b7a8a; --text-bright: #eef2f7;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13.5px; line-height: 1.75; padding-bottom: 40px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px; gap: 12px; border-bottom: 1px solid var(--border); }
+  .header-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .logo-icon svg { width: 34px; height: 34px; display: block; filter: drop-shadow(0 0 6px rgba(74,255,180,0.5)); animation: iconPulse 3s ease-in-out infinite; }
+  @keyframes iconPulse {
+    0%,100% { filter: drop-shadow(0 0 5px rgba(74,255,180,0.5)) drop-shadow(0 0 12px rgba(0,212,255,0.22)); }
+    50% { filter: drop-shadow(0 0 10px rgba(74,255,180,0.9)) drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
+  }
+  .logo-icon .ring { animation: ringSpin 9s linear infinite; transform-origin: 19px 19px; }
+  @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .logo-icon .node-blink  { animation: nodeBlink 2.2s ease-in-out infinite; }
+  .logo-icon .node-blink2 { animation: nodeBlink 2.2s ease-in-out infinite 0.7s; }
+  .logo-icon .node-blink3 { animation: nodeBlink 2.2s ease-in-out infinite 1.4s; }
+  .logo-icon .node-blink4 { animation: nodeBlink 2.2s ease-in-out infinite 0.35s; }
+  @keyframes nodeBlink { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+  .header-title { font-family: var(--sans); font-size: 16px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.4px; }
+  .header-sub { font-size: 9px; color: var(--text-dim); letter-spacing: 0.07em; text-transform: uppercase; margin-top: 1px; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--border); color: var(--text); padding: 7px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; }
+  .back-link:hover { border-color: var(--text-dim); }
+
+  main { max-width: 760px; margin: 0 auto; padding: 26px 16px 0; }
+  section { margin-bottom: 30px; }
+  .section-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .section-num { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.1em; }
+  h2 { font-family: var(--sans); font-size: 16px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.3px; }
+  h3 { font-family: var(--sans); font-size: 13px; font-weight: 700; color: var(--text-bright); margin: 18px 0 8px; }
+  p { color: var(--text); margin-bottom: 12px; }
+  p.lede { color: var(--text-dim); font-size: 12.5px; margin-bottom: 16px; }
+  ul, ol { margin: 0 0 14px 20px; color: var(--text); }
+  li { margin-bottom: 6px; }
+  strong { color: var(--text-bright); }
+  a.inline-link { color: var(--accent2); text-decoration: none; }
+  a.inline-link:hover { text-decoration: underline; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+
+  .callout { display: flex; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  .callout.info { border-left: 3px solid var(--accent2); }
+  .callout.warn { border-left: 3px solid var(--accent3); }
+  .callout.ok { border-left: 3px solid var(--accent); }
+  .callout-icon { font-size: 14px; flex-shrink: 0; }
+  .callout.info .callout-icon { color: var(--accent2); }
+  .callout.warn .callout-icon { color: var(--accent3); }
+  .callout.ok .callout-icon { color: var(--accent); }
+  .callout-text { font-size: 12px; color: var(--text); line-height: 1.7; }
+
+  .code-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 10px 0 16px; }
+  .code-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .code-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-family: var(--mono); font-size: 10px; padding: 3px 9px; border-radius: 5px; cursor: pointer; }
+  .copy-btn:hover { border-color: var(--text-dim); color: var(--text); }
+  .copy-btn.copied { color: var(--accent); border-color: rgba(74,255,180,0.35); }
+  pre { padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: var(--text-bright); white-space: pre; }
+  code.inline { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 12px; color: var(--accent3); }
+
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 12px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { color: var(--text); }
+  td code.inline { font-size: 11px; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 30px; padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: var(--text-dim); max-width: 760px; margin-left: auto; margin-right: auto; }
+  .footer-left { display: flex; align-items: center; gap: 7px; }
+  .footer-left .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @media (min-width: 640px) { header { padding: 18px 24px; } main { padding: 32px 24px 0; } footer { padding: 20px 24px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">
+      <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="nodeGrad" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4affb4"/><stop offset="100%" stop-color="#00d4ff"/>
+          </linearGradient>
+          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#4affb4" stop-opacity="0.9"/><stop offset="100%" stop-color="#0d1a18" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="ringGrad2" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4affb4" stop-opacity="0.9"/><stop offset="50%" stop-color="#00d4ff" stop-opacity="0.25"/><stop offset="100%" stop-color="#4affb4" stop-opacity="0.9"/>
+          </linearGradient>
+        </defs>
+        <circle cx="19" cy="19" r="12" fill="url(#coreGlow)"/>
+        <line x1="19" y1="19" x2="19" y2="7"  stroke="rgba(74,255,180,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="31" y2="19" stroke="rgba(0,212,255,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="19" y2="31" stroke="rgba(74,255,180,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="7"  y2="19" stroke="rgba(0,212,255,0.35)" stroke-width="1"/>
+        <circle cx="19" cy="19" r="4.2" fill="#0f2a22" stroke="url(#nodeGrad)" stroke-width="1.3"/>
+        <circle class="node-blink"  cx="19" cy="7"  r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="node-blink2" cx="31" cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <circle class="node-blink3" cx="19" cy="31" r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="node-blink4" cx="7"  cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <ellipse class="ring" cx="19" cy="19" rx="16.5" ry="16.5" fill="none" stroke="url(#ringGrad2)" stroke-width="1" stroke-dasharray="3 4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">ipset-arm64</div>
+      <div class="header-sub">Help &amp; Documentation · v7.24-r3</div>
+    </div>
+  </div>
+  <a href="index.html" class="back-link">← Control Panel</a>
+</header>
+
+<main>
+
+  <!-- 00 OVERVIEW -->
+  <section>
+    <div class="section-header"><span class="section-num">00</span><h2>What is this module</h2></div>
+    <p><strong>ipset-arm64</strong> is a dynamic, arm64 Android kernel module that lets you block specific IP addresses or entire network ranges at the firewall level, and control it all from a WebUI - no Termux, no adb, no manual shell commands required for everyday use.</p>
+    <p>It bundles the <code class="inline">ipset</code> binary with a control script (<code class="inline">ipctl.sh</code>) and a web interface. Nothing is blocked by default - every set and every firewall rule only exists because you created it.</p>
+
+    <h3>How IP/network blocking actually works</h3>
+    <p>Two pieces work together:</p>
+    <ul>
+      <li><strong>ipset</strong> - a fast, indexed list ("set") of IP addresses or CIDR ranges, stored in the kernel. Looking up whether an address is a member of a set is O(1)-ish, unlike checking hundreds of individual iptables rules one by one.</li>
+      <li><strong>iptables</strong> - the actual firewall. A single rule says "for any packet whose destination matches this set, DROP it." One rule can reference thousands of addresses at once via the set.</li>
+    </ul>
+    <p>Typical uses: blocking a known malicious server by IP, blocking an entire hosting provider's range (CIDR) that keeps serving abuse traffic, cutting off an app's hardcoded IP that ignores your DNS settings entirely, or building a personal blocklist of ad/telemetry endpoints that resolve to fixed IPs.</p>
+
+    <div class="callout info">
+      <div class="callout-icon">ⓘ</div>
+      <div class="callout-text"><strong>Single address vs. range:</strong> a single IP (<code class="inline">1.2.3.4</code>) blocks just that one host. A CIDR range (<code class="inline">1.2.3.0/24</code>) blocks every address in that block at once - useful when a provider rotates through many IPs for the same service.</div>
+    </div>
+  </section>
+
+  <!-- 01 -->
+  <section>
+    <div class="section-header"><span class="section-num">01</span><h2>Status</h2></div>
+    <p>Shows whether your kernel actually supports what this module needs: the <code class="inline">ipset</code> binary running correctly, <code class="inline">iptables</code> present, and the relevant kernel configs (<code class="inline">CONFIG_IP_SET</code>, <code class="inline">CONFIG_IP_SET_HASH_IP</code>, <code class="inline">CONFIG_IP_SET_HASH_NET</code>, <code class="inline">CONFIG_NETFILTER_XT_SET</code>) enabled. Green <code class="inline">OK</code> / <code class="inline">= y</code> means supported; red means missing.</p>
+    <p>Also lists every set currently loaded in the kernel and every dynamic rule currently active - a full snapshot of what's actually blocking traffic right now.</p>
+  </section>
+
+  <!-- 02 -->
+  <section>
+    <div class="section-header"><span class="section-num">02</span><h2>Sets</h2></div>
+    <p>A "set" is just a named container for addresses. Create one, pick a type, then add addresses to it. Nothing is blocked yet at this point - creating a set only prepares the list.</p>
+
+    <table>
+      <tr><th>Type</th><th>Holds</th><th>Example entry</th></tr>
+      <tr><td><code class="inline">hash:ip</code></td><td>single addresses</td><td><code class="inline">104.20.23.154</code></td></tr>
+      <tr><td><code class="inline">hash:net</code></td><td>networks / CIDR ranges</td><td><code class="inline">104.20.20.0/22</code></td></tr>
+      <tr><td><code class="inline">hash:mac</code></td><td>MAC addresses</td><td><code class="inline">aa:bb:cc:dd:ee:ff</code></td></tr>
+      <tr><td><code class="inline">hash:ip,mac</code></td><td>address + MAC pair</td><td><code class="inline">192.168.1.5,aa:bb:cc:dd:ee:ff</code></td></tr>
+      <tr><td><code class="inline">hash:net,net</code></td><td>network pairs (source + destination)</td><td><code class="inline">10.0.0.0/8,192.168.0.0/16</code></td></tr>
+      <tr><td><code class="inline">hash:ip,port</code></td><td>address + port</td><td><code class="inline">1.2.3.4,tcp:443</code></td></tr>
+      <tr><td><code class="inline">hash:net,port</code></td><td>network + port</td><td><code class="inline">10.0.0.0/8,udp:53</code></td></tr>
+      <tr><td><code class="inline">hash:net,iface</code></td><td>network + interface</td><td><code class="inline">10.0.0.0/8,wlan0</code></td></tr>
+    </table>
+
+    <p>Run <code class="inline">sh ipctl.sh types</code> for the full list including the bitmap and list types. Which of them actually work is a property of the kernel, not this module - <code class="inline">sh ipctl.sh status</code> reports what the running kernel provides.</p>
+
+    <p>Sets are IPv4 by default. For an IPv6 set, pick <strong>IPv6</strong> in the family dropdown next to the type when creating it, or from the shell:
+    <code class="inline">sh ipctl.sh create v6block hash:net inet6</code>.</p>
+
+    <p><code class="inline">bitmap:*</code> and <code class="inline">hash:mac</code> have no address family — the dropdown disables itself for those.</p>
+
+    <p>Once a set exists, tapping it opens <strong>Set Detail</strong> right below (add/remove addresses). Firewall rules for it are managed separately in <strong>section 03 - Config</strong>, so you never have to scroll past a huge set's members just to reach the rule controls.</p>
+
+    <div class="callout ok">
+      <div class="callout-icon">✓</div>
+      <div class="callout-text">Equivalent raw command: <code class="inline">sh ipctl.sh create myset hash:ip</code> then <code class="inline">sh ipctl.sh add myset 1.2.3.4</code>.</div>
+    </div>
+  </section>
+
+  <!-- SET DETAIL -->
+  <section>
+    <div class="section-header"><h2>Set Detail</h2></div>
+    <p>Appears right below Sets once you tap a set tile (tap again to close it). Only handles <strong>members</strong> - adding/removing individual IPs or CIDR ranges. This just edits the list; it doesn't block anything by itself. Firewall rules live in Config (section 03) instead, reachable independently via its own set selector - you don't need to open this view at all just to turn a rule on or off.</p>
+  </section>
+
+  <!-- 03 -->
+  <section>
+    <div class="section-header"><span class="section-num">03</span><h2>Config</h2></div>
+    <p>Firewall rule control for any set, always visible - independent of how many members that set has. Pick a set from the dropdown here (separate from tapping a tile in Sets); nothing else needs to be open.</p>
+
+    <h3>The config box</h3>
+    <p>Four dropdowns define what a rule would look like: <strong>chain</strong> (<code class="inline">OUTPUT</code>/<code class="inline">INPUT</code>/<code class="inline">FORWARD</code>), <strong>direction</strong> (<code class="inline">dst</code>/<code class="inline">src</code>), <strong>target</strong> (<code class="inline">DROP</code>/<code class="inline">ACCEPT</code>/<code class="inline">REJECT</code>/<code class="inline">RETURN</code>), and which <strong>set</strong> to apply it to.</p>
+
+    <h3>Per-app filtering (optional)</h3>
+    <p>Below the set selector is a search box - type or paste part of a package name (e.g. <code class="inline">instagram</code>) to find an installed app, filtered live from a locally cached list (loaded once, on first tap). Selecting one restricts the rule to that single app's traffic, shown as a chip with a <strong>Clear</strong> button.</p>
+    <div class="callout warn">
+      <div class="callout-icon">⚠</div>
+      <div class="callout-text">Only works with chain = <code class="inline">OUTPUT</code>. Android's <code class="inline">owner</code> match can identify which app originated an outgoing packet, but has no way to attribute incoming traffic (<code class="inline">INPUT</code>) to a specific app before it's even been routed anywhere on the device.</div>
+    </div>
+    <p>Each rule targets exactly one app at a time - to filter several apps, create a separate set per app (or per group) rather than trying to combine them into one rule.</p>
+
+    <h3>The 3 rule slots</h3>
+    <p>Below the config box are three independent slots, each with its own status badge and button. This is what lets you enforce up to <strong>3 simultaneous rules</strong> on the same set - e.g. block both incoming and outgoing traffic at once, or apply different targets per direction.</p>
+    <ul>
+      <li>An empty slot just says <strong>"Enable rule"</strong>. Tapping it reads whatever is currently selected in the config box above and creates that exact rule, claimed by that specific slot.</li>
+      <li>An active slot shows <strong>"Disable rule &lt;CHAIN&gt;"</strong> - naming the chain it's actually enforcing (and the app's uid, if per-app filtering is active). Tapping it removes precisely that rule, regardless of what the config box currently shows.</li>
+      <li>Each slot keeps its own identity across refreshes - enabling slot 2 keeps it in slot 2, it never gets shuffled to slot 1.</li>
+      <li>Trying to enable a combination that's already active in another slot is blocked with an on-screen warning instead of silently creating a duplicate.</li>
+      <li>A set with no addresses yet can't have a rule enabled for it - the button will explain why instead of silently creating a rule that blocks nothing.</li>
+    </ul>
+
+    <p><strong>Delete entire set</strong> automatically disables every active slot for it first, then destroys the set - safe to hit even mid-test, no manual cleanup needed beforehand.</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">Equivalent raw commands</span><button class="copy-btn">copy</button></div>
+      <pre>sh ipctl.sh rule-add myset OUTPUT dst DROP           # first slot
+sh ipctl.sh rule-add myset INPUT dst DROP            # second slot, same set
+sh ipctl.sh rule-add myset OUTPUT dst DROP 10234     # third slot, restricted to app uid 10234
+sh ipctl.sh rule-del myset OUTPUT dst DROP           # disable just that one
+sh ipctl.sh apps                                     # list installed packages with their uid
+sh ipctl.sh destroy myset                            # only works once no rule is active</pre>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section>
+    <div class="section-header"><span class="section-num">04</span><h2>Active Rules</h2></div>
+    <p>A flat list of every firewall rule currently enforced by this module, across every set - your at-a-glance "what's actually being blocked right now" view, independent of which set you have open.</p>
+  </section>
+
+  <!-- 05 -->
+  <section>
+    <div class="section-header"><span class="section-num">05</span><h2>Connectivity Test</h2></div>
+    <p>A built-in <code class="inline">ping</code> runner. Type any address and check whether it's reachable - handy right after enabling a rule, to confirm the block actually took effect, all without leaving the WebUI or opening Termux.</p>
+  </section>
+
+  <!-- 06 -->
+  <section>
+    <div class="section-header"><span class="section-num">06</span><h2>Threat Feeds</h2></div>
+    <p>Downloads and maintains a managed set called <code class="inline">feed_firehol_level1</code>, built from <a class="inline-link" href="https://github.com/firehol/blocklist-ipsets" target="_blank">FireHOL's level1</a> aggregated list - it combines several sources (dshield, feodo/abuse.ch botnet trackers, and Spamhaus DROP) into one feed, so a single update covers more malicious infrastructure than any one source alone. It behaves exactly like any other set (shows up in Sets with an orange <strong>FEED</strong> tag, gets its rules from Config like normal), except its membership is kept current for you.</p>
+    <div class="callout ok">
+      <div class="callout-icon">✓</div>
+      <div class="callout-text">FireHOL's raw list also includes IANA "bogon" ranges (private/reserved address space like <code class="inline">192.168.0.0/16</code>, <code class="inline">127.0.0.0/8</code>, and carrier-grade NAT <code class="inline">100.64.0.0/10</code>) meant for filtering traffic <em>arriving</em> at a network edge - not for blocking outbound traffic from a phone. These are excluded before the set is built, so this feed can never block your own WiFi gateway, mobile carrier NAT, or loopback traffic.</div>
+    </div>
+    <ul>
+      <li><strong>Update Now</strong> - fetches the current list, excludes the fixed bogon ranges, deduplicates, and atomically swaps it in. No traffic gap: the old set stays enforced right up until the new one is fully built. Every update fully replaces the set's contents - nothing from the previous version lingers alongside the new entries.</li>
+    </ul>
+    <div class="callout warn">
+      <div class="callout-icon">⚠</div>
+      <div class="callout-text">Requires <code class="inline">curl</code> or <code class="inline">wget</code> on the device. Most root managers ship with busybox, which provides <code class="inline">wget</code> - if neither is found, Update Now will say so explicitly instead of failing silently.</div>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section>
+    <div class="section-header"><span class="section-num">07</span><h2>Boot Restore Log</h2></div>
+    <p>Every reboot, <code class="inline">service.sh</code> automatically reloads whatever sets and rules you had active before shutting down. This panel shows exactly what happened during that process on the last boot - useful for confirming persistence is working, or diagnosing why a rule didn't come back.</p>
+  </section>
+
+  <!-- 09 -->
+  <section>
+    <div class="section-header"><span class="section-num">08</span><h2>Command Log</h2></div>
+    <p>A rolling history (last 30 entries) of every command this WebUI has run in the current session, with the raw output. Newest at the bottom - scroll up to review earlier actions. The size badge next to <strong>Clear</strong> shows how much this session's log currently holds in memory (not a file on disk).</p>
+  </section>
+
+  <!-- PERSISTENCE -->
+  <section>
+    <div class="section-header"><span class="section-num">09</span><h2>Persistence, updates &amp; reflashing</h2></div>
+    <p>Your sets, rules, and threat feed state are saved to <code class="inline">/data/adb/ipset_arm64_data/</code> - deliberately <strong>outside</strong> the module's own folder.</p>
+    <div class="callout info">
+      <div class="callout-icon">ⓘ</div>
+      <div class="callout-text">When a Magisk/KernelSU module is updated, the manager replaces its entire folder with the new zip's contents. Anything stored inside the module's own directory would be wiped on every update. Storing data externally means you can reflash a new version of this module - to pick up new features or fixes - and your existing sets, rules, feed subscription, and boot log all survive untouched.</div>
+    </div>
+    <p>On every boot, <code class="inline">service.sh</code> reads this external data and reapplies it automatically - no action needed from you.</p>
+  </section>
+
+  <!-- UNINSTALL -->
+  <section>
+    <div class="section-header"><span class="section-num">10</span><h2>Uninstalling</h2></div>
+    <p>Removing the module through your manager's normal uninstall flow runs <code class="inline">uninstall.sh</code> automatically, which:</p>
+    <ul>
+      <li>Removes every active firewall rule this module created (kernel-level, not just files)</li>
+      <li>Destroys every ipset set loaded in the kernel, including the threat feed set</li>
+      <li>Deletes the external data directory (<code class="inline">/data/adb/ipset_arm64_data/</code>)</li>
+    </ul>
+    <p>The device is left exactly as if the module was never installed - no orphaned rules silently blocking traffic after removal.</p>
+  </section>
+
+  <!-- DNSCRYPT -->
+  <section>
+    <div class="section-header"><span class="section-num">11</span><h2>Using this alongside dnscrypt-proxy-android-arm64-only</h2></div>
+    <p><a class="inline-link" href="https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only" target="_blank">dnscrypt-proxy-android-arm64-only</a> is a companion module - they solve different problems and are safe to run together.</p>
+
+    <table>
+      <tr><th></th><th>dnscrypt-proxy</th><th>ipset-arm64</th></tr>
+      <tr><td>Operates at</td><td>DNS layer</td><td>IP/packet layer</td></tr>
+      <tr><td>Blocks by</td><td>domain name</td><td>IP address / CIDR range</td></tr>
+      <tr><td>Stops</td><td>the lookup, before an IP is even resolved</td><td>the connection, after an IP is known</td></tr>
+      <tr><td>Blind spot</td><td>apps with hardcoded IPs or their own DoH that skip your resolver</td><td>doesn't know domain names, only addresses</td></tr>
+    </table>
+
+    <p>Running both gives you layered coverage: dnscrypt-proxy blocks known-bad domains before your device ever asks "what's the IP for this?" - cheap and broad. ipset-arm64 catches what DNS-level filtering can't: apps that bypass your DNS settings entirely and connect straight to a hardcoded IP, or CDN/hosting ranges you want blocked regardless of which domain resolves there.</p>
+
+    <div class="callout ok">
+      <div class="callout-icon">✓</div>
+      <div class="callout-text">No conflict between them - dnscrypt-proxy touches DNS traffic (port 53/853), ipset-arm64 touches whatever chain/rule you configure. They don't compete for the same packets unless you explicitly set one up to.</div>
+    </div>
+  </section>
+
+  <!-- COMMAND REFERENCE -->
+  <section>
+    <div class="section-header"><span class="section-num">12</span><h2>Full command reference</h2></div>
+    <p class="lede">For advanced use directly via adb shell / Termux (<code class="inline">su</code>) - everything the WebUI does maps to one of these.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-label">ipctl.sh</span><button class="copy-btn">copy</button></div>
+      <pre>sh /data/adb/modules/ipset_arm64/ipctl.sh status
+sh /data/adb/modules/ipset_arm64/ipctl.sh list [setname]
+sh /data/adb/modules/ipset_arm64/ipctl.sh create &lt;name&gt; [type] [inet|inet6]
+sh /data/adb/modules/ipset_arm64/ipctl.sh destroy &lt;name&gt;
+sh /data/adb/modules/ipset_arm64/ipctl.sh add &lt;name&gt; &lt;ip&gt;
+sh /data/adb/modules/ipset_arm64/ipctl.sh del &lt;name&gt; &lt;ip&gt;
+sh /data/adb/modules/ipset_arm64/ipctl.sh test &lt;name&gt; &lt;ip&gt;
+sh /data/adb/modules/ipset_arm64/ipctl.sh rule-add &lt;name&gt; [chain] [dir] [target]
+sh /data/adb/modules/ipset_arm64/ipctl.sh rule-del &lt;name&gt; [chain] [dir] [target]
+sh /data/adb/modules/ipset_arm64/ipctl.sh rules
+sh /data/adb/modules/ipset_arm64/ipctl.sh bootlog
+sh /data/adb/modules/ipset_arm64/ipctl.sh feed-update
+sh /data/adb/modules/ipset_arm64/ipctl.sh feed-status
+sh /data/adb/modules/ipset_arm64/ipctl.sh save
+sh /data/adb/modules/ipset_arm64/ipctl.sh restore
+sh /data/adb/modules/ipset_arm64/ipctl.sh flush-all</pre>
+    </div>
+    <p><code class="inline">rule-add</code>/<code class="inline">rule-del</code> defaults: chain=<code class="inline">OUTPUT</code>, dir=<code class="inline">dst</code>, target=<code class="inline">DROP</code>. A set can carry up to 3 simultaneous rules this way - just call <code class="inline">rule-add</code> again with a different chain or direction. <code class="inline">flush-all</code> removes every set and rule <em>this module created</em> - tracked in an ownership manifest, so sets belonging to other apps (a firewall, a VPN, your own scripts) are never touched. Used internally by <code class="inline">uninstall.sh</code>, and safe to run manually for a clean slate.</p>
+
+    <p>For the same reason, <code class="inline">destroy</code> refuses to remove a set this module did not create. Use the <code class="inline">ipset</code> binary directly if that is really what you want.</p>
+  </section>
+
+  <footer>
+    <div class="footer-left"><div class="dot"></div> ipset-arm64 · Android Arm64 · Tears Burn</div>
+    <a href="https://github.com/nikakvo/ipset-arm64" target="_blank">GitHub →</a>
+  </footer>
+
+</main>
+
+<script>
+document.querySelectorAll(".copy-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const pre = btn.closest(".code-block").querySelector("pre");
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+      btn.textContent = "copied";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "copy"; btn.classList.remove("copied"); }, 1500);
+    });
+  });
+});
+</script>
+
+</body>
+</html>

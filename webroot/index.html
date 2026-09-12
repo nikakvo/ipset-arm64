@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0f10">
+<title>ipset-arm64 — Control Panel</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 38'%3E%3Ccircle cx='19' cy='19' r='12' fill='%230d1a18'/%3E%3Cline x1='19' y1='19' x2='19' y2='7' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='31' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='19' y2='31' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='7' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Ccircle cx='19' cy='19' r='5' fill='%230f2a22' stroke='%234affb4' stroke-width='1.6'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f10; --surface: #131618; --surface2: #1a1d20; --border: #252a2e;
+    --accent: #4affb4; --accent2: #00d4ff; --accent3: #ff9f43; --accent4: #ff6b6b;
+    --text: #d4dbe3; --text-dim: #6b7a8a; --text-bright: #eef2f7;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13.5px; line-height: 1.7; padding-bottom: 40px; }
+
+  /* ── HEADER ── */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px; gap: 12px; border-bottom: 1px solid var(--border); }
+  .header-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .logo-icon svg { width: 38px; height: 38px; display: block; filter: drop-shadow(0 0 6px rgba(74,255,180,0.5)); animation: iconPulse 3s ease-in-out infinite; }
+  @keyframes iconPulse {
+    0%,100% { filter: drop-shadow(0 0 5px rgba(74,255,180,0.5)) drop-shadow(0 0 12px rgba(0,212,255,0.22)); }
+    50% { filter: drop-shadow(0 0 10px rgba(74,255,180,0.9)) drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
+  }
+  .logo-icon .ring { animation: ringSpin 9s linear infinite; transform-origin: 19px 19px; }
+  @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .logo-icon .node-blink  { animation: nodeBlink 2.2s ease-in-out infinite; }
+  .logo-icon .node-blink2 { animation: nodeBlink 2.2s ease-in-out infinite 0.7s; }
+  .logo-icon .node-blink3 { animation: nodeBlink 2.2s ease-in-out infinite 1.4s; }
+  .logo-icon .node-blink4 { animation: nodeBlink 2.2s ease-in-out infinite 0.35s; }
+  @keyframes nodeBlink { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+  .header-title { font-family: var(--sans); font-size: 16px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.4px; white-space: nowrap; }
+  .header-sub { font-size: 9px; color: var(--text-dim); letter-spacing: 0.07em; text-transform: uppercase; margin-top: 1px; white-space: nowrap; }
+  .live-badge { display: flex; align-items: center; gap: 6px; background: rgba(74,255,180,0.1); border: 1px solid rgba(74,255,180,0.3); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; flex-shrink: 0; }
+  .version-badge { font-size: 9.5px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.04em; flex-shrink: 0; padding: 4px 2px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: nodeBlink 1.6s ease-in-out infinite; }
+  .help-badge { display: flex; align-items: center; gap: 6px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.35); color: var(--accent2); padding: 4px 10px 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-decoration: none; flex-shrink: 0; transition: background 0.15s, border-color 0.15s; }
+  .help-badge:hover { background: rgba(0,212,255,0.2); border-color: rgba(0,212,255,0.55); }
+  .help-icon { width: 14px; height: 14px; border-radius: 50%; border: 1.4px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; line-height: 1; animation: helpPulse 2.4s ease-in-out infinite; }
+  @keyframes helpPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.45); }
+    50% { box-shadow: 0 0 0 4px rgba(0,212,255,0); }
+  }
+
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 0; }
+  section { margin-bottom: 22px; }
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .section-title { display: flex; align-items: baseline; gap: 10px; }
+  .section-num { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.1em; }
+  h2 { font-family: var(--sans); font-size: 15px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.3px; }
+  p.lede { color: var(--text-dim); font-size: 12px; margin-bottom: 16px; line-height: 1.7; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+
+  /* spinner used on refresh / busy actions */
+  .spinner { width: 13px; height: 13px; flex-shrink: 0; }
+  .spinner circle { animation: spin 0.9s linear infinite; transform-origin: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ── BUTTONS / INPUTS ── */
+  button { font-family: var(--mono); cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 6px; border: 1px solid transparent; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; padding: 9px 14px; transition: opacity 0.15s, border-color 0.15s, background 0.15s; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .btn-primary { background: rgba(74,255,180,0.1); border-color: rgba(74,255,180,0.35); color: var(--accent); }
+  .btn-primary:hover:not(:disabled) { background: rgba(74,255,180,0.18); }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--text-dim); }
+  .btn-danger { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.35); color: var(--accent4); }
+  .btn-danger:hover:not(:disabled) { background: rgba(255,107,107,0.18); }
+  .btn-cyan { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.35); color: var(--accent2); }
+  .btn-cyan:hover:not(:disabled) { background: rgba(0,212,255,0.18); }
+
+  input, select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-bright);
+    padding: 9px 11px; border-radius: 6px; font-family: var(--mono); font-size: 12.5px; flex: 1; min-width: 110px;
+  }
+  input::placeholder { color: var(--text-dim); }
+  input:focus, select:focus { outline: none; border-color: rgba(74,255,180,0.4); }
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding-right: 32px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7a8a' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  select:hover { border-color: rgba(74,255,180,0.25); background-color: #1e2226; }
+  select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234affb4' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  select:disabled { cursor: default; opacity: 0.5; }
+  select option { background: var(--surface2); color: var(--text-bright); }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .row:last-child { margin-bottom: 0; }
+
+  /* ── STATUS ── */
+  .status-body { font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--text-dim); white-space: pre-wrap; min-height: 90px; max-height: 260px; overflow-y: auto; }
+  .status-body .tok-ok   { color: var(--accent); font-weight: 700; }
+  .status-body .tok-fail { color: var(--accent4); font-weight: 700; }
+  .status-body .tok-warn { color: var(--accent3); font-weight: 600; }
+  .status-body::-webkit-scrollbar { width: 3px; } .status-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── SET TILES ── */
+  .set-tile { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; margin-top: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .set-tile:hover { border-color: rgba(74,255,180,0.3); }
+  .set-tile.selected { border-color: var(--accent); background: rgba(74,255,180,0.06); }
+  .set-tile-name { font-weight: 600; color: var(--text-bright); font-size: 12.5px; }
+  .set-tile-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; }
+  .chip { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 20px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: var(--accent2); flex-shrink: 0; }
+  .app-results { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin: -4px 0 10px; max-height: 200px; overflow-y: auto; display: none; }
+  .app-results.show { display: block; }
+  .app-result-row { padding: 9px 12px; font-size: 12px; color: var(--text); cursor: pointer; border-bottom: 1px solid var(--border); }
+  .app-result-row:last-child { border-bottom: none; }
+  .app-result-row:hover { background: #1e2226; color: var(--text-bright); }
+  .app-result-uid { color: var(--text-dim); font-size: 10.5px; margin-left: 6px; }
+  .app-chip-row { display: none; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .app-chip-row.show { display: flex; }
+  .muted { color: var(--text-dim); font-size: 11.5px; }
+
+  /* ── MEMBERS ── */
+  .member-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .member-row:last-child { border-bottom: none; }
+  .member-row code { color: var(--accent3); }
+
+  /* ── RULE PANEL ── */
+  .rule-status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); }
+  .rule-status-badge.on { background: rgba(74,255,180,0.1); border-color: rgba(74,255,180,0.35); color: var(--accent); }
+  .rule-status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .rule-status-badge.on .dot { animation: nodeBlink 1.6s ease-in-out infinite; }
+
+  /* ── CODE / LOG BLOCK ── */
+  .code-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .code-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .code-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .code-dots { display: flex; gap: 4px; }
+  .code-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .code-dot:nth-child(1) { background: #ff5f57; } .code-dot:nth-child(2) { background: #febc2e; } .code-dot:nth-child(3) { background: #28c840; }
+  pre.log-pre { padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; min-height: 90px; max-height: 200px; overflow-y: auto; }
+
+  /* ── CALLOUT (bridge warning) ── */
+  .callout { display: none; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent4); border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; }
+  .callout.show { display: flex; }
+  .callout-icon { font-size: 14px; flex-shrink: 0; color: var(--accent4); }
+  .callout-text { font-size: 11.5px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+  .callout-text strong { color: var(--text-bright); }
+
+  /* ── CUSTOM MODAL (replaces native alert/confirm) ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 380px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+  .modal-icon { font-size: 20px; margin-bottom: 10px; }
+  .modal-icon.info { color: var(--accent2); }
+  .modal-icon.warn { color: var(--accent4); }
+  .modal-text { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 18px; white-space: pre-wrap; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 30px; padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: var(--text-dim); max-width: 720px; margin-left: auto; margin-right: auto; }
+  .footer-left { display: flex; align-items: center; gap: 7px; }
+  .footer-left .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @media (min-width: 640px) { header { padding: 18px 24px; } main { padding: 30px 24px 0; } footer { padding: 20px 24px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">
+      <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="nodeGrad" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4affb4"/><stop offset="100%" stop-color="#00d4ff"/>
+          </linearGradient>
+          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#4affb4" stop-opacity="0.9"/><stop offset="100%" stop-color="#0d1a18" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="ringGrad2" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4affb4" stop-opacity="0.9"/><stop offset="50%" stop-color="#00d4ff" stop-opacity="0.25"/><stop offset="100%" stop-color="#4affb4" stop-opacity="0.9"/>
+          </linearGradient>
+        </defs>
+        <circle cx="19" cy="19" r="12" fill="url(#coreGlow)"/>
+        <line x1="19" y1="19" x2="19" y2="7"  stroke="rgba(74,255,180,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="31" y2="19" stroke="rgba(0,212,255,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="19" y2="31" stroke="rgba(74,255,180,0.35)" stroke-width="1"/>
+        <line x1="19" y1="19" x2="7"  y2="19" stroke="rgba(0,212,255,0.35)" stroke-width="1"/>
+        <circle cx="19" cy="19" r="4.2" fill="#0f2a22" stroke="url(#nodeGrad)" stroke-width="1.3"/>
+        <circle class="node-blink"  cx="19" cy="7"  r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="node-blink2" cx="31" cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <circle class="node-blink3" cx="19" cy="31" r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="node-blink4" cx="7"  cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <ellipse class="ring" cx="19" cy="19" rx="16.5" ry="16.5" fill="none" stroke="url(#ringGrad2)" stroke-width="1" stroke-dasharray="3 4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">ipset-arm64</div>
+      <div class="header-sub">Android Arm64 · Dynamic Firewall</div>
+    </div>
+  </div>
+  <div class="header-right" style="display:flex; align-items:center; gap:8px;">
+    <span class="version-badge">v7.24-r3</span>
+    <a href="help.html" class="help-badge"><span class="help-icon">?</span>HELP</a>
+    <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="callout" id="bridge-warning">
+    <div class="callout-icon">⚠</div>
+    <div class="callout-text" id="bridge-warning-text"></div>
+  </div>
+
+  <!-- 01 STATUS -->
+  <section id="status">
+    <div class="section-header">
+      <div class="section-title"><span class="section-num">01</span><h2>Status</h2></div>
+      <button class="btn-cyan spin-btn" id="refresh-btn" onclick="refreshStatus()">
+        <svg class="spinner" id="refresh-spinner" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="42 14"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div class="card">
+      <div id="status-out" class="status-body">Loading...</div>
+    </div>
+  </section>
+
+  <!-- 02 SETS -->
+  <section id="sets">
+    <div class="section-header"><div class="section-title"><span class="section-num">02</span><h2>Sets</h2></div></div>
+    <p class="lede">Nothing exists until you create it here. No default set, no default rule.</p>
+    <div class="card">
+      <div class="row">
+        <input id="new-set-name" placeholder="name, e.g. testblock">
+        <select id="new-set-type">
+          <option value="hash:ip">hash:ip — single addresses</option>
+          <option value="hash:net">hash:net — networks / CIDR</option>
+          <option value="hash:mac">hash:mac — MAC addresses</option>
+          <option value="hash:ip,mac">hash:ip,mac — address + MAC pair</option>
+          <option value="hash:net,net">hash:net,net — network pairs</option>
+          <option value="hash:ip,port">hash:ip,port — address + port</option>
+          <option value="hash:net,port">hash:net,port — network + port</option>
+          <option value="hash:net,iface">hash:net,iface — network + interface</option>
+        </select>
+      </div>
+      <div class="row">
+        <span id="new-set-family-label" style="align-self:center;font-family:var(--mono);font-size:12.5px;color:var(--text-dim);white-space:nowrap">Address family</span>
+        <select id="new-set-family" title="Address family — IPv6 sets hold IPv6 addresses only">
+          <option value="">IPv4 (default)</option>
+          <option value="inet6">IPv6</option>
+        </select>
+      </div>
+      <div class="row">
+        <button class="btn-primary" style="width:100%" onclick="createSet()">+ Create set</button>
+      </div>
+      <div id="set-list"></div>
+    </div>
+  </section>
+
+  <!-- SET DETAIL (no section number - reached via tapping a set tile, appears right below Sets) -->
+  <section id="detail" style="display:none;">
+    <div class="section-header"><div class="section-title"><h2 id="detail-title">Set</h2></div></div>
+    <div class="card">
+      <div class="row">
+        <input id="ip-input" placeholder="IP or CIDR, e.g. 1.2.3.4">
+        <button class="btn-primary" onclick="addIp()">+ Add</button>
+      </div>
+      <div id="member-list"></div>
+    </div>
+  </section>
+
+  <!-- 03 CONFIG -->
+  <section id="config-section">
+    <div class="section-header"><div class="section-title"><span class="section-num">03</span><h2>Config</h2></div></div>
+    <p class="lede">Firewall rules for any set - independent of scrolling through its members. Pick a set below.</p>
+    <div class="card">
+      <div class="row">
+        <select id="config-chain"><option>OUTPUT</option><option>INPUT</option><option>FORWARD</option></select>
+        <select id="config-dir"><option>dst</option><option>src</option></select>
+      </div>
+      <div class="row">
+        <select id="config-target"><option>DROP</option><option>ACCEPT</option><option>REJECT</option><option>RETURN</option></select>
+        <select id="config-set-select" autocomplete="off" onchange="configSelectSet(this.value)"><option value="">none</option></select>
+      </div>
+      <div class="row">
+        <input id="config-app-search" placeholder="Search app package (or paste name), e.g. instagram" oninput="onAppSearchInput(this.value)" onfocus="onAppSearchFocus()">
+      </div>
+      <div id="config-app-results" class="app-results"></div>
+      <div id="config-app-chip-row" class="app-chip-row">
+        <span class="chip">Filtering by app</span>
+        <span id="config-app-chip-label" style="font-size:11.5px; color:var(--text-bright);"></span>
+        <button class="btn-ghost" onclick="clearApp()" style="flex:none; padding:4px 10px; font-size:10.5px; margin-left:auto;">Clear</button>
+      </div>
+      <p class="lede" style="margin:4px 0 0;">Per-app filtering only works with chain = OUTPUT (Android can't attribute incoming traffic to an app).</p>
+
+      <div id="config-slot-rows" style="margin-top:6px;">
+        <div class="row" style="align-items:center;">
+          <span id="rule-status-1" class="rule-status-badge"><span class="dot"></span>inactive</span>
+          <button id="rule-btn-1" class="btn-cyan" onclick="toggleSlot(1)" style="margin-left:auto;" disabled>Enable rule</button>
+        </div>
+        <div class="row" style="align-items:center;">
+          <span id="rule-status-2" class="rule-status-badge"><span class="dot"></span>inactive</span>
+          <button id="rule-btn-2" class="btn-cyan" onclick="toggleSlot(2)" style="margin-left:auto;" disabled>Enable rule</button>
+        </div>
+        <div class="row" style="align-items:center;">
+          <span id="rule-status-3" class="rule-status-badge"><span class="dot"></span>inactive</span>
+          <button id="rule-btn-3" class="btn-cyan" onclick="toggleSlot(3)" style="margin-left:auto;" disabled>Enable rule</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <button id="config-destroy-btn" class="btn-danger" style="width:100%" onclick="destroySetFromConfig()" disabled>Delete entire set</button>
+    </div>
+  </section>
+
+  <!-- 04 ACTIVE RULES -->
+  <section id="rules">
+    <div class="section-header"><div class="section-title"><span class="section-num">04</span><h2>Active Rules</h2></div></div>
+    <div class="card">
+      <div id="rules-out" class="status-body">-</div>
+    </div>
+  </section>
+
+  <!-- 05 CONNECTIVITY TEST -->
+  <section id="ping-section">
+    <div class="section-header"><div class="section-title"><span class="section-num">05</span><h2>Connectivity Test</h2></div></div>
+    <p class="lede">Ping any address directly - no Termux/adb needed. Useful right after enabling a rule.</p>
+    <div class="card">
+      <div class="row">
+        <input id="ping-input" placeholder="IP, e.g. 104.20.23.154">
+        <button class="btn-cyan" onclick="runPing()">Ping</button>
+      </div>
+      <pre class="log-pre" id="ping-out" style="margin-top:8px;">-</pre>
+    </div>
+  </section>
+
+  <!-- 06 THREAT FEEDS -->
+  <section id="feeds-section">
+    <div class="section-header"><div class="section-title"><span class="section-num">06</span><h2>Threat Feeds</h2></div></div>
+    <p class="lede">FireHOL level1 (dshield + feodo + spamhaus_drop, bogon ranges excluded) - known-malicious network ranges from multiple sources. Off by default; nothing downloads until you press Update.</p>
+    <div class="card">
+      <div id="feed-status" class="status-body">Loading...</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-primary" style="width:100%" onclick="updateFeedNow()">Update Now</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 BOOT LOG -->
+  <section id="bootlog-section">
+    <div class="section-header">
+      <div class="section-title"><span class="section-num">07</span><h2>Boot Restore Log</h2></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-cyan" onclick="refreshBootlog()">Refresh</button>
+        <button class="btn-danger" onclick="clearBootlog()">Clear</button>
+      </div>
+    </div>
+    <p class="lede">What <code>service.sh</code> did the last time the device booted - runs even if you never open this WebUI.</p>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-label">service.log</span>
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      </div>
+      <pre class="log-pre" id="bootlog-out">-</pre>
+    </div>
+  </section>
+
+  <!-- 08 LOG -->
+  <section id="log-section">
+    <div class="section-header">
+      <div class="section-title"><span class="section-num">08</span><h2>Command Log</h2></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="log-size" class="muted">0 B</span>
+        <button class="btn-danger" onclick="clearCmdLog()">Clear</button>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-label">Last command</span>
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      </div>
+      <pre class="log-pre" id="log">-</pre>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-left"><div class="dot"></div> ipset-arm64 · Android Arm64 · Tears Burn</div>
+    <a href="https://github.com/nikakvo/ipset-arm64" target="_blank">GitHub →</a>
+  </footer>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-icon" id="modal-icon">ⓘ</div>
+      <div class="modal-text" id="modal-text"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/*
+  Bridge layer: KernelSU / SukiSU-Ultra WebUI managers inject a `ksu` object
+  with an `exec(command, optionsJson, callbackFuncName)` function — options
+  MUST be a JSON string (matches the official `kernelsu` npm library). The
+  manager calls window[callbackFuncName](exitCode, stdout, stderr) when done.
+
+  If the buttons don't respond, check the Log panel and the warning banner
+  above — every failed bridge call also prints the equivalent shell command
+  so it can be run manually via adb shell / Termux (su).
+*/
+
+function formatCount(n) {
+  const num = parseInt(n, 10);
+  return isNaN(num) ? n : num.toLocaleString("en-US");
+}
+
+function customAlert(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modal-overlay");
+    document.getElementById("modal-icon").className = "modal-icon info";
+    document.getElementById("modal-icon").textContent = "ⓘ";
+    document.getElementById("modal-text").textContent = message;
+    const actions = document.getElementById("modal-actions");
+    actions.innerHTML = "";
+    const ok = document.createElement("button");
+    ok.className = "btn-cyan";
+    ok.textContent = "OK";
+    ok.onclick = () => { overlay.classList.remove("show"); resolve(); };
+    actions.appendChild(ok);
+    overlay.classList.add("show");
+  });
+}
+
+function customConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modal-overlay");
+    document.getElementById("modal-icon").className = "modal-icon warn";
+    document.getElementById("modal-icon").textContent = "⚠";
+    document.getElementById("modal-text").textContent = message;
+    const actions = document.getElementById("modal-actions");
+    actions.innerHTML = "";
+    const cancel = document.createElement("button");
+    cancel.className = "btn-ghost";
+    cancel.textContent = "Cancel";
+    cancel.onclick = () => { overlay.classList.remove("show"); resolve(false); };
+    const del = document.createElement("button");
+    del.className = "btn-danger";
+    del.textContent = "Delete";
+    del.onclick = () => { overlay.classList.remove("show"); resolve(true); };
+    actions.appendChild(cancel);
+    actions.appendChild(del);
+    overlay.classList.add("show");
+  });
+}
+
+const MODDIR = "/data/adb/modules/ipset_arm64";
+const IPCTL = "sh " + MODDIR + "/ipctl.sh";
+
+let selectedSet = null;
+let busy = 0;
+
+function setBusy(state) {
+  busy += state ? 1 : -1;
+  const spinner = document.getElementById("refresh-spinner");
+  spinner.style.display = busy > 0 ? "inline-block" : "none";
+  document.querySelectorAll("button").forEach(b => b.disabled = busy > 0);
+}
+
+function ksuExec(cmd) {
+  return new Promise((resolve) => {
+    if (typeof window.ksu === "undefined" || typeof window.ksu.exec !== "function") {
+      showBridgeWarning(cmd);
+      resolve({ exitCode: -1, stdout: "", stderr: "ksu.exec not available in this WebUI" });
+      return;
+    }
+    const cbName = "ksu_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+    window[cbName] = (exitCode, stdout, stderr) => {
+      delete window[cbName];
+      resolve({ exitCode, stdout: stdout || "", stderr: stderr || "" });
+    };
+    try {
+      window.ksu.exec(cmd, JSON.stringify({ cwd: "/" }), cbName);
+    } catch (e) {
+      delete window[cbName];
+      showBridgeWarning(cmd);
+      resolve({ exitCode: -1, stdout: "", stderr: String(e) });
+    }
+  });
+}
+
+function showBridgeWarning(cmd) {
+  const box = document.getElementById("bridge-warning");
+  const text = document.getElementById("bridge-warning-text");
+  box.classList.add("show");
+  text.innerHTML = "<strong>WebUI bridge unavailable.</strong> Run manually via adb shell / Termux (su):\n\n" + cmd;
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+let cmdHistory = [];
+
+function log(text) {
+  cmdHistory.push(text);
+  if (cmdHistory.length > 30) cmdHistory.shift();
+  const joined = cmdHistory.join("\n\n" + "─".repeat(40) + "\n\n");
+  const el = document.getElementById("log");
+  el.textContent = joined;
+  el.scrollTop = el.scrollHeight;
+  document.getElementById("log-size").textContent = formatBytes(new Blob([joined]).size);
+}
+
+function clearCmdLog() {
+  cmdHistory = [];
+  document.getElementById("log").textContent = "-";
+  document.getElementById("log-size").textContent = "0 B";
+}
+
+async function run(cmd) {
+  setBusy(true);
+  const res = await ksuExec(cmd);
+  setBusy(false);
+  log("$ " + cmd + "\n\n" + (res.stdout || "") + (res.stderr ? ("\n[stderr] " + res.stderr) : ""));
+  return res;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function colorizeStatus(text) {
+  let t = escapeHtml(text);
+  t = t.replace(/\bOK\b/g, '<span class="tok-ok">OK</span>');
+  t = t.replace(/\bFAIL\b/g, '<span class="tok-fail">FAIL</span>');
+  t = t.replace(/\bMISSING\b/g, '<span class="tok-fail">MISSING</span>');
+  t = t.replace(/=\s*y\b/g, '= <span class="tok-ok">y</span>');
+  t = t.replace(/=\s*n\b/g, '= <span class="tok-fail">n</span>');
+  t = t.replace(/not set \/ not found/g, '<span class="tok-warn">not set / not found</span>');
+  t = t.replace(/possibly missing[^\n]*/g, (m) => '<span class="tok-fail">' + m + '</span>');
+  return t;
+}
+
+async function refreshStatus() {
+  const res = await run(IPCTL + " status");
+  document.getElementById("status-out").innerHTML = colorizeStatus(res.stdout || res.stderr || "(no response)");
+}
+
+async function refreshSets() {
+  const res = await run(IPCTL + " list");
+  const container = document.getElementById("set-list");
+  container.innerHTML = "";
+  const lines = (res.stdout || "").split("\n").filter(l => l.trim() && !l.startsWith("("));
+
+  // keep the Config section's set selector in sync with the current set list
+  const configSelect = document.getElementById("config-set-select");
+  const prevValue = configSelect.value;
+  configSelect.innerHTML = '<option value="">none</option>';
+  lines.forEach(line => {
+    const name = line.trim().split(/\s+/)[0];
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    configSelect.appendChild(opt);
+  });
+  if (lines.some(l => l.trim().split(/\s+/)[0] === prevValue)) {
+    configSelect.value = prevValue;
+  } else if (configSet && !lines.some(l => l.trim().split(/\s+/)[0] === configSet)) {
+    configSet = null; // the previously configured set no longer exists
+  }
+
+  if (lines.length === 0) {
+    container.innerHTML = '<div class="muted" style="margin-top:10px;">No sets created yet.</div>';
+    return;
+  }
+  lines.forEach(line => {
+    const parts = line.trim().split(/\s+/);
+    const name = parts[0];
+    const type = (parts.find(p => p.startsWith("type=")) || "type=?").split("=")[1];
+    const entries = (parts.find(p => p.startsWith("entries=")) || "entries=0").split("=")[1];
+    const isFeed = name.startsWith("feed_");
+    const tile = document.createElement("div");
+    tile.className = "set-tile" + (name === selectedSet ? " selected" : "");
+    tile.innerHTML =
+      '<div><div class="set-tile-name">' + name + (isFeed ? ' <span class="chip" style="background:rgba(255,159,67,0.1);border-color:rgba(255,159,67,0.3);color:var(--accent3);">FEED</span>' : '') + '</div><div class="set-tile-meta">' + type + '</div></div>' +
+      '<span class="chip">' + formatCount(entries) + ' entries</span>';
+    tile.onclick = () => selectSet(name);
+    container.appendChild(tile);
+  });
+}
+
+function safeName(v) { return /^[a-zA-Z0-9_]{1,31}$/.test(v); }
+function safeAddr(v) { return /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(v); }
+
+async function createSet() {
+  const name = document.getElementById("new-set-name").value.trim();
+  const type = document.getElementById("new-set-type").value;
+  const family = document.getElementById("new-set-family").value;
+  if (!safeName(name)) { await customAlert("Invalid name (letters/digits/underscore only, max 31 chars)"); return; }
+  // bitmap:* and hash:mac have no address family — ipctl.sh rejects a
+  // family argument for those outright, so don't send one.
+  const familyless = type.startsWith("bitmap:") || type === "hash:mac";
+  if (family && familyless) {
+    await customAlert(type + " has no address family. Create it as IPv4 (default).");
+    return;
+  }
+  let cmd = IPCTL + " create " + name + " " + type;
+  if (family && !familyless) cmd += " " + family;
+  await run(cmd);
+  document.getElementById("new-set-name").value = "";
+  await refreshSets();
+}
+
+// selectSet: tile click, toggles the member-editing view only. Also
+// syncs the Config section's set selector for convenience, but Config
+// tracks its own independent `configSet` so picking a different set
+// there never disturbs whichever member view happens to be open.
+// Keep the family selector honest: disable it for types that have no
+// address family, so the invalid combination is not offered at all.
+function syncFamilySelector() {
+  const type = document.getElementById("new-set-type").value;
+  const fam = document.getElementById("new-set-family");
+  const familyless = type.startsWith("bitmap:") || type === "hash:mac";
+  fam.disabled = familyless;
+  if (familyless) fam.value = "";
+  fam.style.opacity = familyless ? "0.45" : "1";
+  const lbl = document.getElementById("new-set-family-label");
+  if (lbl) {
+    lbl.style.opacity = familyless ? "0.45" : "1";
+    lbl.textContent = familyless ? "Address family (n/a)" : "Address family";
+  }
+}
+
+async function selectSet(name) {
+  if (selectedSet === name) {
+    selectedSet = null;
+    document.getElementById("detail").style.display = "none";
+    await refreshSets();
+    return;
+  }
+  selectedSet = name;
+  document.getElementById("detail").style.display = "block";
+  document.getElementById("detail-title").textContent = "Set: " + name;
+  await refreshSets();
+  await refreshMembers();
+
+  document.getElementById("config-set-select").value = name;
+  if (configSet !== name) slotAssignment = [null, null, null];
+  configSet = name;
+  await refreshConfigPanel();
+}
+
+async function refreshMembers() {
+  if (!selectedSet) return;
+  const res = await run(IPCTL + " list " + selectedSet);
+  const container = document.getElementById("member-list");
+  container.innerHTML = "";
+  const membersBlock = (res.stdout || "").split("Members:")[1] || "";
+  const members = membersBlock.split("\n").map(s => s.trim()).filter(Boolean);
+  if (members.length === 0) {
+    container.innerHTML = '<div class="muted" style="margin-top:10px;">No addresses added yet.</div>';
+    return;
+  }
+  members.forEach(ip => {
+    const row = document.createElement("div");
+    row.className = "member-row";
+    row.innerHTML = '<code>' + ip + '</code>';
+    const btn = document.createElement("button");
+    btn.className = "btn-danger";
+    btn.style.padding = "5px 10px";
+    btn.style.fontSize = "10.5px";
+    btn.textContent = "remove";
+    btn.onclick = () => removeIp(ip);
+    row.appendChild(btn);
+    container.appendChild(row);
+  });
+}
+
+async function addIp() {
+  const ip = document.getElementById("ip-input").value.trim();
+  if (!selectedSet) { await customAlert("Select a set first"); return; }
+  if (!safeAddr(ip)) { await customAlert("Invalid IP/CIDR"); return; }
+  await run(IPCTL + " add " + selectedSet + " " + ip);
+  document.getElementById("ip-input").value = "";
+  await refreshMembers();
+}
+
+async function removeIp(ip) {
+  if (!selectedSet) return;
+  await run(IPCTL + " del " + selectedSet + " " + ip);
+  await refreshMembers();
+}
+
+// ---- Config section (03): independent of the member view, so managing
+// rules never requires scrolling past a set's (possibly huge) IP list ----
+
+let configSet = null;
+// slotAssignment[i] = {chain,dir,target,uid} this specific slot currently holds, or null if empty.
+// This is what makes each button independent: a slot keeps its identity across
+// refreshes instead of being reassigned positionally from the rules list.
+let slotAssignment = [null, null, null];
+
+function sameRule(a, b) {
+  return a && b && a.chain === b.chain && a.dir === b.dir && a.target === b.target && (a.uid || "") === (b.uid || "");
+}
+
+let appList = [];       // [{pkg, uid}, ...] cached after first load
+let selectedApp = null; // {pkg, uid} or null
+
+async function ensureAppsLoaded() {
+  if (appList.length > 0) return;
+  const res = await run(IPCTL + " apps");
+  const lines = (res.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
+  appList = lines
+    .map(l => { const [pkg, uid] = l.split("|"); return { pkg, uid }; })
+    .filter(a => a.pkg && a.uid);
+}
+
+async function onAppSearchFocus() {
+  await ensureAppsLoaded();
+}
+
+function onAppSearchInput(query) {
+  const results = document.getElementById("config-app-results");
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    results.classList.remove("show");
+    results.innerHTML = "";
+    return;
+  }
+  const matches = appList.filter(a => a.pkg.toLowerCase().includes(q)).slice(0, 8);
+  if (matches.length === 0) {
+    results.innerHTML = '<div class="app-result-row" style="cursor:default; color:var(--text-dim);">No installed app matches "' + query + '"</div>';
+    results.classList.add("show");
+    return;
+  }
+  results.innerHTML = "";
+  matches.forEach(a => {
+    const row = document.createElement("div");
+    row.className = "app-result-row";
+    row.innerHTML = a.pkg + '<span class="app-result-uid">uid ' + a.uid + '</span>';
+    row.onclick = () => selectApp(a.pkg, a.uid);
+    results.appendChild(row);
+  });
+  results.classList.add("show");
+}
+
+function selectApp(pkg, uid) {
+  selectedApp = { pkg, uid };
+  document.getElementById("config-app-search").value = "";
+  document.getElementById("config-app-results").classList.remove("show");
+  document.getElementById("config-app-results").innerHTML = "";
+  document.getElementById("config-app-chip-label").textContent = pkg + " (uid " + uid + ")";
+  document.getElementById("config-app-chip-row").classList.add("show");
+}
+
+function clearApp() {
+  selectedApp = null;
+  document.getElementById("config-app-chip-row").classList.remove("show");
+}
+
+async function configSelectSet(name) {
+  configSet = name || null;
+  slotAssignment = [null, null, null]; // slots are per-set, reset on switch
+  await refreshConfigPanel();
+}
+
+async function refreshConfigPanel() {
+  const enabled = !!configSet;
+  document.getElementById("config-destroy-btn").disabled = !enabled;
+
+  if (!enabled) {
+    slotAssignment = [null, null, null];
+    for (let i = 1; i <= 3; i++) {
+      const badge = document.getElementById("rule-status-" + i);
+      const btn = document.getElementById("rule-btn-" + i);
+      badge.innerHTML = '<span class="dot"></span>inactive';
+      badge.className = "rule-status-badge";
+      btn.textContent = "Enable rule";
+      btn.disabled = true;
+    }
+    return;
+  }
+
+  const res = await run(IPCTL + " rules");
+  const lines = (res.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
+  let activeNow = lines
+    .map(l => l.split("|"))
+    .filter(p => p.length >= 4 && p[1] === configSet)
+    .map(p => ({ chain: p[0], dir: p[2], target: p[3], uid: p[4] || "" }));
+
+  // 1) keep each slot's own rule if it's still active; otherwise the slot goes empty
+  for (let i = 0; i < 3; i++) {
+    if (slotAssignment[i] && !activeNow.some(r => sameRule(r, slotAssignment[i]))) {
+      slotAssignment[i] = null; // was removed (e.g. via Disable) - free this slot
+    }
+  }
+  // remove whatever is already claimed by a slot from the pool
+  activeNow = activeNow.filter(r => !slotAssignment.some(s => sameRule(s, r)));
+
+  // 2) any active rule not claimed by a slot (first load, or created outside the UI)
+  //    gets adopted by the next free slot, in order
+  for (let i = 0; i < 3 && activeNow.length > 0; i++) {
+    if (!slotAssignment[i]) {
+      slotAssignment[i] = activeNow.shift();
+    }
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const badge = document.getElementById("rule-status-" + (i + 1));
+    const btn = document.getElementById("rule-btn-" + (i + 1));
+    btn.disabled = false;
+    if (slotAssignment[i]) {
+      badge.innerHTML = '<span class="dot"></span>active';
+      badge.className = "rule-status-badge on";
+      btn.textContent = "Disable rule " + slotAssignment[i].chain + (slotAssignment[i].uid ? " (uid " + slotAssignment[i].uid + ")" : "");
+    } else {
+      badge.innerHTML = '<span class="dot"></span>inactive';
+      badge.className = "rule-status-badge";
+      btn.textContent = "Enable rule";
+    }
+  }
+}
+
+async function toggleSlot(slotNum) {
+  if (!configSet) return;
+  const idx = slotNum - 1;
+  const existing = slotAssignment[idx];
+
+  if (existing) {
+    // disable using the exact chain/dir/target/uid this slot was created with,
+    // regardless of whatever the config box currently shows
+    await run(IPCTL + " rule-del " + configSet + " " + existing.chain + " " + existing.dir + " " + existing.target + (existing.uid ? " " + existing.uid : ""));
+    slotAssignment[idx] = null;
+  } else {
+    const chain = document.getElementById("config-chain").value;
+    const dir = document.getElementById("config-dir").value;
+    const target = document.getElementById("config-target").value;
+    const uid = selectedApp ? selectedApp.uid : "";
+
+    const listRes = await run(IPCTL + " list " + configSet);
+    const countMatch = (listRes.stdout || "").match(/Number of entries:\s*(\d+)/);
+    const memberCount = countMatch ? parseInt(countMatch[1], 10) : 0;
+    if (memberCount < 1) {
+      await customAlert("'" + configSet + "' has no addresses yet. Add at least one IP/CIDR before enabling a rule - an empty set blocks nothing.");
+      return;
+    }
+
+    if (uid && chain !== "OUTPUT") {
+      await customAlert("Per-app filtering only works with chain = OUTPUT. Switch the chain dropdown to OUTPUT, or pick \"All apps\".");
+      return;
+    }
+
+    const dup = slotAssignment.some(s => sameRule(s, { chain, dir, target, uid }));
+    if (dup) {
+      await customAlert("This rule already exists (" + chain + " / " + dir + " / " + target + (uid ? " / uid " + uid : "") + ").");
+      return;
+    }
+
+    // this specific slot claims whatever is currently set in the Config box -
+    // claim it BEFORE the refresh so it can never be picked up by another slot
+    slotAssignment[idx] = { chain, dir, target, uid };
+    await run(IPCTL + " rule-add " + configSet + " " + chain + " " + dir + " " + target + (uid ? " " + uid : ""));
+  }
+
+  await refreshConfigPanel();
+  await refreshRules();
+}
+
+async function destroySetFromConfig() {
+  if (!configSet) return;
+  if (!(await customConfirm("Delete the entire set '" + configSet + "'? Any active firewall rule for it will be removed automatically first."))) return;
+
+  const rulesRes = await run(IPCTL + " rules");
+  const lines = (rulesRes.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    const parts = line.split("|");
+    if (parts.length >= 4 && parts[1] === configSet) {
+      const [chain, , dir, target, uid] = parts;
+      await run(IPCTL + " rule-del " + configSet + " " + chain + " " + dir + " " + target + (uid ? " " + uid : ""));
+    }
+  }
+
+  await run(IPCTL + " destroy " + configSet);
+
+  if (selectedSet === configSet) {
+    selectedSet = null;
+    document.getElementById("detail").style.display = "none";
+  }
+  configSet = null;
+  document.getElementById("config-set-select").value = "";
+
+  await refreshSets();
+  await refreshConfigPanel();
+  await refreshRules();
+}
+
+async function refreshRules() {
+  const res = await run(IPCTL + " rules");
+  document.getElementById("rules-out").textContent = res.stdout || "(no active rules)";
+}
+
+async function runPing() {
+  const ip = document.getElementById("ping-input").value.trim();
+  const bare = ip.split("/")[0]; // ping doesn't take CIDR
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(bare)) { await customAlert("Invalid IP"); return; }
+  const out = document.getElementById("ping-out");
+  out.textContent = "Pinging " + bare + " ...";
+  const res = await run("ping -c 3 -W 2 " + bare);
+  out.textContent = (res.stdout || "") + (res.stderr ? ("\n" + res.stderr) : "");
+}
+
+async function refreshFeedStatus() {
+  const res = await run(IPCTL + " feed-status");
+  const rawLines = (res.stdout || "").split("\n").filter(Boolean);
+  const display = rawLines.map(l => l.replace(/"count":(\d+)/, (m, n) => '"count":' + formatCount(n)));
+  document.getElementById("feed-status").textContent = display.join("\n") || "(no response)";
+}
+
+async function updateFeedNow() {
+  const res = await run(IPCTL + " feed-update");
+  await refreshFeedStatus();
+  await refreshSets();
+  if (res.exitCode !== 0) {
+    const errLine = (res.stdout || "").split("\n").find(l => l.startsWith("ERROR:")) || res.stderr || "unknown error";
+    await customAlert("Feed update failed - existing feed left untouched.\n\n" + errLine);
+  }
+}
+
+async function refreshBootlog() {
+  const res = await run(IPCTL + " bootlog");
+  document.getElementById("bootlog-out").textContent = res.stdout || res.stderr || "(no response)";
+}
+
+async function clearBootlog() {
+  if (!(await customConfirm("Clear the boot restore log? This deletes the on-disk history of what service.sh did on past reboots - it starts fresh on the next boot."))) return;
+  await run(IPCTL + " bootlog-clear");
+  await refreshBootlog();
+}
+
+// Browsers/WebViews auto-restore a <select>'s visually-chosen option across
+// navigation (even a full reload), independent of our own JS state which
+// always starts fresh as null. Force them back in sync on every load, or
+// the dropdown can visually show a set while the rule slots think none is
+// selected (e.g. after visiting help.html and returning).
+document.getElementById("config-set-select").value = "";
+
+document.getElementById("new-set-type").addEventListener("change", syncFamilySelector);
+syncFamilySelector();
+
+refreshStatus();
+refreshSets();
+refreshRules();
+refreshConfigPanel();
+refreshFeedStatus();
+refreshBootlog();
+</script>
+</body>
+</html>
