@@ -3,5 +3,5 @@ name=ipset (arm64)
 version=v7.24-r10
 versionCode=10
 author=Tears Burn
-description=IP-level blocklists (ipset + iptables/ip6tables) | installed, reboot to activate
+description=IP-level blocklists (ipset + iptables/ip6tables) | installed
 updateJson=https://raw.githubusercontent.com/nikakvo/ipset-arm64/main/update.json
