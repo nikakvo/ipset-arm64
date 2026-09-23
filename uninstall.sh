@@ -1,55 +1,42 @@
 #!/system/bin/sh
-# uninstall.sh - runs while the module directory still exists, before removal.
-# Goal: leave the device exactly as if this module was never installed -
-# no orphaned ipset sets, no orphaned iptables rules, no leftover data.
+# uninstall.sh - leave the device as if the module was never installed:
+# no chains, no jumps, no sets of ours, no data. Sets and rules that belong
+# to other apps are never touched.
 
 MODDIR=${0%/*}
+DATA_DIR="/data/adb/ipset_arm64_data"
 
-ui_print() { echo "$1"; }
-
-ui_print "- Removing ipset-arm64: flushing all dynamic sets and firewall rules"
-
-if [ -f "$MODDIR/ipctl.sh" ]; then
-    sh "$MODDIR/ipctl.sh" flush-all >/dev/null 2>&1
-    ui_print "  - dynamic state flushed via ipctl.sh"
+if [ -f "$MODDIR/sh/common.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$MODDIR/sh/common.sh"
+  lock_get 20
+  # Chains and jumps first: a set still referenced by a rule cannot be destroyed.
+  rules_remove_all
+  sets_destroy_managed
+  sources_destroy_all
+  for _n in $(own_list); do "$IPSET" destroy "$_n" 2>/dev/null; done
+  lock_release
 else
-    ui_print "  - ipctl.sh missing, falling back to manual cleanup"
-
-    IPSET="$MODDIR/system/bin/ipset"
-    [ -x "$IPSET" ] || IPSET="$(command -v ipset 2>/dev/null)"
-    IPTABLES="$(command -v iptables 2>/dev/null || echo /system/bin/iptables)"
-
-    if [ -x "$IPSET" ] && [ -s "/data/adb/ipset_arm64_data/rules.conf" ]; then
-        while IFS='|' read -r chain name dir target uid; do
-            [ -z "$chain" ] && continue
-            owner_args=""
-            [ -n "$uid" ] && owner_args="-m owner --uid-owner $uid"
-            "$IPTABLES" -D "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null
-        done < "/data/adb/ipset_arm64_data/rules.conf"
-    fi
-
-    # Only destroy sets THIS MODULE created, listed in owned.list.
-    # This used to iterate `ipset list -n`, i.e. every set on the
-    # device - so uninstalling this module deleted the firewall state
-    # of any other app using ipset. If the manifest is missing there is
-    # nothing we can prove ownership of, so nothing is destroyed.
-    OWNED="/data/adb/ipset_arm64_data/owned.list"
-    if [ -x "$IPSET" ] && [ -s "$OWNED" ]; then
-        while read -r n; do
-            [ -z "$n" ] && continue
-            "$IPSET" destroy "$n" 2>/dev/null
-        done < "$OWNED"
-    elif [ -x "$IPSET" ]; then
-        ui_print "  - no ownership manifest found; leaving all ipset sets in place"
-    fi
+  # Incomplete module: remove what can be removed by name.
+  for _t in iptables ip6tables; do
+    command -v "$_t" >/dev/null 2>&1 || continue
+    for _j in OUTPUT:IPSA_OUT INPUT:IPSA_IN FORWARD:IPSA_FWD; do
+      while "$_t" -w -D "${_j%%:*}" -j "${_j#*:}" 2>/dev/null; do :; done
+    done
+    for _c in IPSA_OUT IPSA_IN IPSA_FWD IPSA_ADV_OUT IPSA_ADV_IN IPSA_ADV_FWD; do "$_t" -w -F "$_c" 2>/dev/null; done
+    for _c in IPSA_OUT IPSA_IN IPSA_FWD IPSA_ADV_OUT IPSA_ADV_IN IPSA_ADV_FWD; do "$_t" -w -X "$_c" 2>/dev/null; done
+  done
+  _ipset="$MODDIR/system/bin/ipset"
+  [ -x "$_ipset" ] || _ipset=$(command -v ipset 2>/dev/null)
+  if [ -n "$_ipset" ]; then
+    for _s in $("$_ipset" list -n 2>/dev/null | grep -E '^ipsa_(out|in|block)[46]'); do "$_ipset" destroy "$_s" 2>/dev/null; done
+    for _s in $("$_ipset" list -n 2>/dev/null | grep '^ipsa_'); do "$_ipset" destroy "$_s" 2>/dev/null; done
+    for _s in $("$_ipset" list -n 2>/dev/null | grep '^ipsa_'); do "$_ipset" destroy "$_s" 2>/dev/null; done
+    [ -s "$DATA_DIR/owned.list" ] && while read -r _s; do
+      [ -n "$_s" ] && "$_ipset" destroy "$_s" 2>/dev/null
+    done < "$DATA_DIR/owned.list"
+  fi
 fi
 
-# Persisted data lives outside $MODDIR (see ipctl.sh) so it survives
-# module updates - Magisk/KernelSU only remove $MODDIR itself, so we
-# have to remove this external directory ourselves on uninstall.
-if [ -d "/data/adb/ipset_arm64_data" ]; then
-    rm -rf "/data/adb/ipset_arm64_data"
-    ui_print "  - removed persisted data (/data/adb/ipset_arm64_data)"
-fi
-
-ui_print "- ipset-arm64 removed cleanly"
+rm -rf "$DATA_DIR"
+# The sdcard copies of your lists are yours; they are left in place.

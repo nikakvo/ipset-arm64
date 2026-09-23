@@ -1,176 +1,475 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0d0f10">
-<title>ipset-arm64 — Control Panel</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 38'%3E%3Ccircle cx='19' cy='19' r='12' fill='%230d1a18'/%3E%3Cline x1='19' y1='19' x2='19' y2='7' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='31' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='19' y2='31' stroke='%234affb4' stroke-width='1.5' opacity='0.5'/%3E%3Cline x1='19' y1='19' x2='7' y2='19' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Ccircle cx='19' cy='19' r='5' fill='%230f2a22' stroke='%234affb4' stroke-width='1.6'/%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0d0f10; --surface: #131618; --surface2: #1a1d20; --border: #252a2e;
-    --accent: #4affb4; --accent2: #00d4ff; --accent3: #ff9f43; --accent4: #ff6b6b;
-    --text: #d4dbe3; --text-dim: #6b7a8a; --text-bright: #eef2f7;
-    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { min-height: 100%; }
-  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13.5px; line-height: 1.7; padding-bottom: 40px; }
+  <title>ipset-arm64</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Font loads without blocking: the page and its script never wait for
+       the network (offline, slow or filtered DNS); the monospace fallback
+       is used until it arrives. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" media="print" onload="this.media='all'">
+  <style>
 
-  /* ── HEADER ── */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 16px; gap: 12px; border-bottom: 1px solid var(--border); }
-  .header-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
-  .logo-icon svg { width: 38px; height: 38px; display: block; filter: drop-shadow(0 0 6px rgba(74,255,180,0.5)); animation: iconPulse 3s ease-in-out infinite; }
-  @keyframes iconPulse {
-    0%,100% { filter: drop-shadow(0 0 5px rgba(74,255,180,0.5)) drop-shadow(0 0 12px rgba(0,212,255,0.22)); }
-    50% { filter: drop-shadow(0 0 10px rgba(74,255,180,0.9)) drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
-  }
-  .logo-icon .ring { animation: ringSpin 9s linear infinite; transform-origin: 19px 19px; }
-  @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .logo-icon .node-blink  { animation: nodeBlink 2.2s ease-in-out infinite; }
-  .logo-icon .node-blink2 { animation: nodeBlink 2.2s ease-in-out infinite 0.7s; }
-  .logo-icon .node-blink3 { animation: nodeBlink 2.2s ease-in-out infinite 1.4s; }
-  .logo-icon .node-blink4 { animation: nodeBlink 2.2s ease-in-out infinite 0.35s; }
-  @keyframes nodeBlink { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
-  .header-title { font-family: var(--sans); font-size: 16px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.4px; white-space: nowrap; }
-  .header-sub { font-size: 9px; color: var(--text-dim); letter-spacing: 0.07em; text-transform: uppercase; margin-top: 1px; white-space: nowrap; }
-  .live-badge { display: flex; align-items: center; gap: 6px; background: rgba(74,255,180,0.1); border: 1px solid rgba(74,255,180,0.3); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; flex-shrink: 0; }
-  .version-badge { font-size: 9.5px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.04em; flex-shrink: 0; padding: 4px 2px; }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: nodeBlink 1.6s ease-in-out infinite; }
-  .help-badge { display: flex; align-items: center; gap: 6px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.35); color: var(--accent2); padding: 4px 10px 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-decoration: none; flex-shrink: 0; transition: background 0.15s, border-color 0.15s; }
-  .help-badge:hover { background: rgba(0,212,255,0.2); border-color: rgba(0,212,255,0.55); }
-  .help-icon { width: 14px; height: 14px; border-radius: 50%; border: 1.4px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; line-height: 1; animation: helpPulse 2.4s ease-in-out infinite; }
-  @keyframes helpPulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.45); }
-    50% { box-shadow: 0 0 0 4px rgba(0,212,255,0); }
-  }
+    :root {
+      --green:  #00d4ff;
+      --amber:  #ff9f43;
+      --red:    #ff6b6b;
+      --blue:   #4affb4;
+      --purple: #cc88ff;
+      --border: #252a2e;
+      --muted:  #6b7a8a;
+      --text:   #d4dbe3;
+      --dim:    #101316;
+      --panel:  #0f1215;
+      --bg:     #0d0f10;
+      --mono:   'Share Tech Mono', ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+    }
 
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 0; }
-  section { margin-bottom: 22px; }
-  .section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .section-title { display: flex; align-items: baseline; gap: 10px; }
-  .section-num { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 0.1em; }
-  h2 { font-family: var(--sans); font-size: 15px; font-weight: 800; color: var(--text-bright); letter-spacing: -0.3px; }
-  p.lede { color: var(--text-dim); font-size: 12px; margin-bottom: 16px; line-height: 1.7; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      font-family: var(--mono);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+        rgba(0,212,255,0.012) 2px, rgba(0,212,255,0.012) 4px);
+      pointer-events: none;
+      z-index: 9999;
+    }
 
-  /* spinner used on refresh / busy actions */
-  .spinner { width: 13px; height: 13px; flex-shrink: 0; }
-  .spinner circle { animation: spin 0.9s linear infinite; transform-origin: center; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spin-btn { display: inline-flex; align-items: center; gap: 6px; }
+    /* ── HEADER ── */
+    header {
+      padding: 6px 8px;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+      background: #111417;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 5px;
+      flex-shrink: 0;
+    }
+    .hdr-top { display: flex; align-items: baseline; gap: 8px; }
+    .htitle {
+      font-size: clamp(11px, 3vw, 14px);
+      color: var(--green);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    #hdr-ver { flex: 1; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+    #clock { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
-  /* ── BUTTONS / INPUTS ── */
-  button { font-family: var(--mono); cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 6px; border: 1px solid transparent; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; padding: 9px 14px; transition: opacity 0.15s, border-color 0.15s, background 0.15s; }
-  button:disabled { opacity: 0.45; cursor: default; }
-  .btn-primary { background: rgba(74,255,180,0.1); border-color: rgba(74,255,180,0.35); color: var(--accent); }
-  .btn-primary:hover:not(:disabled) { background: rgba(74,255,180,0.18); }
-  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
-  .btn-ghost:hover:not(:disabled) { border-color: var(--text-dim); }
-  .btn-danger { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.35); color: var(--accent4); }
-  .btn-danger:hover:not(:disabled) { background: rgba(255,107,107,0.18); }
-  .btn-cyan { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.35); color: var(--accent2); }
-  .btn-cyan:hover:not(:disabled) { background: rgba(0,212,255,0.18); }
+    .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    a.button {
+      padding: 7px 0;
+      color: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 3px;
+      text-decoration: none;
+      font-size: clamp(9px, 2.8vw, 11px);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      text-align: center;
+      transition: all 0.2s;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    a.button:active { background: var(--green); color: #000; }
+    a.button.alt { border-color: var(--blue); color: var(--blue); }
+    a.button.alt:active { background: var(--blue); color: #000; }
+    a.button.disabled { opacity: 0.35; pointer-events: none; border-color: var(--muted); color: var(--muted); }
 
-  input, select {
-    background: var(--surface2); border: 1px solid var(--border); color: var(--text-bright);
-    padding: 9px 11px; border-radius: 6px; font-family: var(--mono); font-size: 12.5px; flex: 1; min-width: 110px;
-  }
-  input::placeholder { color: var(--text-dim); }
-  input:focus, select:focus { outline: none; border-color: rgba(74,255,180,0.4); }
-  select {
-    appearance: none; -webkit-appearance: none; -moz-appearance: none;
-    padding-right: 32px; cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7a8a' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 12px center;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  select:hover { border-color: rgba(74,255,180,0.25); background-color: #1e2226; }
-  select:focus {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234affb4' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  }
-  select:disabled { cursor: default; opacity: 0.5; }
-  select option { background: var(--surface2); color: var(--text-bright); }
-  .row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  .row:last-child { margin-bottom: 0; }
+    /* ── BANNER ── */
+    #banner {
+      padding: 4px 12px;
+      font-size: 10px;
+      letter-spacing: 0.4px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: #002530; color: var(--green);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #banner.b-warn  { background: #2a1a08; color: var(--amber); }
+    #banner.b-error { background: #2a1012; color: var(--red); }
+    .live-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; margin-right: 6px; vertical-align: middle;
+      animation: livePulse 1.4s ease-in-out infinite;
+    }
+    #banner.b-error .live-dot { animation: none; }
+    @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-  /* ── STATUS ── */
-  .status-body { font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--text-dim); white-space: pre-wrap; min-height: 90px; max-height: 260px; overflow-y: auto; }
-  .status-body .tok-ok   { color: var(--accent); font-weight: 700; }
-  .status-body .tok-fail { color: var(--accent4); font-weight: 700; }
-  .status-body .tok-warn { color: var(--accent3); font-weight: 600; }
-  .status-body::-webkit-scrollbar { width: 3px; } .status-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* ── STATS BAR ── */
+    .stats { display: flex; gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .sc { flex: 1; padding: 6px 8px; background: var(--dim); display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .sc .lbl { font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sc .val { font-size: clamp(13px, 3.5vw, 20px); color: var(--green); }
+    .sc .val.r { color: var(--red); } .sc .val.a { color: var(--amber); } .sc .val.b { color: var(--blue); }
 
-  /* ── SET TILES ── */
-  .set-tile { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; margin-top: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-  .set-tile:hover { border-color: rgba(74,255,180,0.3); }
-  .set-tile.selected { border-color: var(--accent); background: rgba(74,255,180,0.06); }
-  .set-tile-name { font-weight: 600; color: var(--text-bright); font-size: 12.5px; }
-  .set-tile-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; }
-  .chip { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 20px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: var(--accent2); flex-shrink: 0; }
-  .app-results { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin: -4px 0 10px; max-height: 200px; overflow-y: auto; display: none; }
-  .app-results.show { display: block; }
-  .app-result-row { padding: 9px 12px; font-size: 12px; color: var(--text); cursor: pointer; border-bottom: 1px solid var(--border); }
-  .app-result-row:last-child { border-bottom: none; }
-  .app-result-row:hover { background: #1e2226; color: var(--text-bright); }
-  .app-result-uid { color: var(--text-dim); font-size: 10.5px; margin-left: 6px; }
-  .app-chip-row { display: none; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .app-chip-row.show { display: flex; }
-  .muted { color: var(--text-dim); font-size: 11.5px; }
+    /* ── TABS ── */
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: #0d0f10; flex-shrink: 0; }
+    .tab {
+      flex: 1; padding: 9px 0; background: transparent; border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted); font-family: var(--mono); font-size: 10px;
+      letter-spacing: 1.2px; text-transform: uppercase; cursor: pointer;
+    }
+    .tab.active { color: var(--green); border-bottom-color: var(--green); }
+    .tab .tab-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-left: 5px; vertical-align: middle; background: transparent; }
+    .tab .tab-dot.warn { background: var(--amber); }
+    .tab .tab-dot.bad  { background: var(--red); }
 
-  /* ── MEMBERS ── */
-  .member-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 12px; }
-  .member-row:last-child { border-bottom: none; }
-  .member-row code { color: var(--accent3); }
+    /* ── PANES ── */
+    main { flex: 1; min-height: 0; position: relative; }
+    .pane { position: absolute; inset: 0; overflow-y: auto; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); display: none; -webkit-overflow-scrolling: touch; }
+    .pane.active { display: block; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
 
-  /* ── RULE PANEL ── */
-  .rule-status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); }
-  .rule-status-badge.on { background: rgba(74,255,180,0.1); border-color: rgba(74,255,180,0.35); color: var(--accent); }
-  .rule-status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .rule-status-badge.on .dot { animation: nodeBlink 1.6s ease-in-out infinite; }
+    /* ── SECTION ── */
+    .section { border-bottom: 1px solid var(--border); padding: 12px 14px 14px; }
+    .section-title {
+      font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.4px;
+      margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .section-title .s-accent { display: inline-block; width: 3px; height: 10px; border-radius: 1px; }
+    .section-title .s-note { margin-left: auto; text-transform: none; letter-spacing: 0.3px; font-size: 8px; }
 
-  /* ── CODE / LOG BLOCK ── */
-  .code-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .code-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--border); }
-  .code-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
-  .code-dots { display: flex; gap: 4px; }
-  .code-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .code-dot:nth-child(1) { background: #ff5f57; } .code-dot:nth-child(2) { background: #febc2e; } .code-dot:nth-child(3) { background: #28c840; }
-  pre.log-pre { padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; min-height: 90px; max-height: 200px; overflow-y: auto; }
+    .d-stat { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid #1a1f24; font-size: 10px; }
+    .d-stat:last-child { border-bottom: none; }
+    .d-stat .k { color: var(--muted); white-space: nowrap; }
+    .d-stat .v { color: var(--green); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .v.r, .c-r { color: var(--red) !important; }
+    .v.a, .c-a { color: var(--amber) !important; }
+    .v.b, .c-b { color: var(--blue) !important; }
+    .v.m, .c-m { color: var(--muted) !important; }
+    .c-g { color: var(--green) !important; }
 
-  /* ── CALLOUT (bridge warning) ── */
-  .callout { display: none; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent4); border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; }
-  .callout.show { display: flex; }
-  .callout-icon { font-size: 14px; flex-shrink: 0; color: var(--accent4); }
-  .callout-text { font-size: 11.5px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
-  .callout-text strong { color: var(--text-bright); }
+    .d-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 10px; }
+    .d-bar-label { color: var(--text); min-width: 80px; max-width: 55%; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .d-bar-wrap { flex: 1; height: 4px; background: #252a2e; border-radius: 2px; overflow: hidden; }
+    .d-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .d-bar-count { color: var(--muted); min-width: 32px; text-align: right; font-size: 9px; }
+    .fill-g { background: var(--green); } .fill-r { background: var(--red); } .fill-a { background: var(--amber); }
+    .fill-b { background: var(--blue); } .fill-p { background: var(--purple); }
 
-  /* ── CUSTOM MODAL (replaces native alert/confirm) ── */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-  .modal-overlay.show { display: flex; }
-  .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 380px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
-  .modal-icon { font-size: 20px; margin-bottom: 10px; }
-  .modal-icon.info { color: var(--accent2); }
-  .modal-icon.warn { color: var(--accent4); }
-  .modal-text { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 18px; white-space: pre-wrap; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .d-row { padding: 5px 0; border-bottom: 1px solid #1a1f24; display: grid; grid-template-columns: 1fr auto auto auto; gap: 0 8px; align-items: center; font-size: 10px; }
+    .d-row:last-child { border-bottom: none; }
+    .d-domain { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .d-qtype  { color: var(--purple); font-size: 8px; text-align: center; min-width: 28px; }
+    .d-status { font-size: 9px; text-align: right; min-width: 60px; }
+    .d-rtt    { color: var(--blue); text-align: right; min-width: 36px; font-size: 9px; }
+    .s-pass { color: var(--green); } .s-reject { color: var(--red); } .s-nx { color: var(--amber); }
+    .s-wait { color: var(--blue); } .s-cloak { color: var(--purple); }
 
-  footer { border-top: 1px solid var(--border); margin-top: 30px; padding: 18px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: var(--text-dim); max-width: 720px; margin-left: auto; margin-right: auto; }
-  .footer-left { display: flex; align-items: center; gap: 7px; }
-  .footer-left .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  footer a { color: var(--accent2); text-decoration: none; }
+    .d-res { padding: 6px 0; border-bottom: 1px solid #1a1f24; }
+    .d-res:last-child { border-bottom: none; }
+    .d-res-name { font-size: 11px; color: var(--green); margin-bottom: 2px; }
+    .d-res-sub  { font-size: 9px; color: var(--muted); }
+    .d-res-sub span { color: var(--text); }
+    .d-res-bar  { height: 2px; background: #252a2e; margin-top: 5px; border-radius: 1px; overflow: hidden; }
+    .d-res-fill { height: 100%; background: var(--green); transition: width 0.6s; }
 
-  @media (min-width: 640px) { header { padding: 18px 24px; } main { padding: 30px 24px 0; } footer { padding: 20px 24px; } }
-</style>
+    .empty { padding: 16px 0; text-align: center; color: var(--muted); font-size: 10px; }
+
+    /* ── UPDATE ── */
+    .upd-btn {
+      display: block; width: 100%; padding: 10px;
+      background: transparent; border: 1px solid var(--green);
+      color: var(--green); font-family: var(--mono);
+      font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+      cursor: pointer; border-radius: 3px; margin-bottom: 10px;
+    }
+    .upd-btn:disabled { opacity: 0.45; border-color: var(--muted); color: var(--muted); }
+    .upd-btn.running { border-color: var(--amber); color: var(--amber); opacity: 1; animation: btnPulse 1.2s ease-in-out infinite; }
+    @keyframes btnPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+    #upd-status { color: var(--muted); font-size: 9px; margin-bottom: 8px; }
+    .upd-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .upd-row .upd-btn { flex: 1; width: auto; margin-bottom: 0; }
+    .src-btn {
+      flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px; background: transparent; border: 1px solid var(--border);
+      border-radius: 3px; color: var(--text); font-family: var(--mono); font-size: 10px; cursor: pointer; text-align: left;
+    }
+    .src-btn.open { border-color: rgba(74,255,180,0.45); }
+    .src-btn .sl { color: var(--muted); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; flex-shrink: 0; }
+    .src-btn #src-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--blue); }
+    .src-btn .chev { color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+    .src-btn.open .chev { transform: rotate(180deg); }
+    .src-btn:disabled { opacity: 0.45; }
+
+    #src-panel { border: 1px solid rgba(74,255,180,0.3); border-radius: 3px; padding: 4px 10px 10px; margin-bottom: 10px; background: #0f1417; }
+    #src-panel.hidden { display: none; }
+    #src-panel.locked { opacity: 0.5; pointer-events: none; }
+    .src-group { font-size: 8px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin: 10px 0 2px; }
+    .src-row { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; border-bottom: 1px solid #1a1f24; cursor: pointer; }
+    .src-row:last-child { border-bottom: none; }
+    .src-row input { appearance: none; -webkit-appearance: none; width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px;
+      border: 1px solid var(--muted); border-radius: 2px; background: transparent; position: relative; cursor: pointer; }
+    .src-row input:checked { border-color: var(--green); background: rgba(0,212,255,0.12); }
+    .src-row input:checked::after { content: '✓'; position: absolute; inset: 0; color: var(--green); font-size: 11px; line-height: 14px; text-align: center; }
+    .src-row .si { flex: 1; min-width: 0; }
+    .src-row .si b { display: block; font-weight: normal; font-size: 11px; color: var(--text); }
+    .src-row .si span { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .src-row .si span.cache { color: #4a90a8; }
+    .src-row .pill { margin-top: 1px; }
+    .src-del { background: transparent; border: 1px solid rgba(255,107,107,0.4); color: var(--red); font-family: var(--mono); font-size: 10px; border-radius: 2px; padding: 1px 7px; cursor: pointer; flex-shrink: 0; }
+    .url-add { display: flex; gap: 6px; margin-top: 8px; }
+    .url-add input { flex: 1; min-width: 0; background: #1a1d20; border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 10px; padding: 6px 8px; border-radius: 2px; }
+    .url-add button, .seg button { background: transparent; border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 10px; padding: 6px 10px; border-radius: 2px; cursor: pointer; }
+    .seg { display: flex; gap: 0; margin-top: 6px; }
+    .seg button { flex: 1; border-radius: 0; margin-left: -1px; text-transform: uppercase; letter-spacing: 0.8px; font-size: 9px; }
+    .seg button:first-child { border-radius: 2px 0 0 2px; margin-left: 0; }
+    .seg button:last-child { border-radius: 0 2px 2px 0; }
+    .seg button.on { color: var(--green); border-color: rgba(0,212,255,0.45); background: rgba(0,212,255,0.07); position: relative; z-index: 1; }
+    .src-warn { font-size: 9px; color: var(--amber); margin-top: 8px; line-height: 1.5; }
+    #ipm-seg button { padding: 9px 4px; font-size: 9px; }
+    /* tools */
+    .inrow { display: flex; gap: 6px; }
+    .inrow input { flex: 1; min-width: 0; background: #1a1d20; border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 11px; padding: 8px; border-radius: 2px; }
+    .inrow button, .btn-s { background: transparent; border: 1px solid rgba(0,212,255,0.35); color: var(--green); font-family: var(--mono); font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; padding: 7px 12px; border-radius: 2px; cursor: pointer; white-space: nowrap; }
+    .btn-s.r { border-color: rgba(255,107,107,0.45); color: var(--red); }
+    .btn-s.b { border-color: rgba(74,255,180,0.45); color: var(--blue); }
+    .btn-s.a { border-color: rgba(255,159,67,0.45); color: var(--amber); }
+    .btn-s:disabled, .inrow button:disabled { opacity: 0.4; }
+    .btn-s.busy { animation: btnPulse 1s ease-in-out infinite; }
+    .btn-row2 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    #chk-out { margin-top: 10px; }
+    .verdict { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .rule-list { max-height: 220px; overflow-y: auto; }
+    .rule-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1a1f24; font-size: 10px; }
+    .rule-row:last-child { border-bottom: none; }
+    .rule-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rule-row button { background: transparent; border: 1px solid rgba(255,107,107,0.4); color: var(--red); font-family: var(--mono); font-size: 10px; border-radius: 2px; padding: 1px 7px; cursor: pointer; }
+    .sub-h { font-size: 8px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin: 12px 0 4px; display: flex; justify-content: space-between; }
+    .badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+    .bdg { font-size: 7.5px; letter-spacing: 0.6px; padding: 0 4px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted); text-transform: uppercase; }
+    .bdg.g { color: var(--green); border-color: rgba(0,212,255,0.3); }
+    .bdg.r { color: var(--red); border-color: rgba(255,107,107,0.35); }
+    .bdg.b { color: var(--blue); border-color: rgba(74,255,180,0.3); }
+    .bdg.a { color: var(--amber); border-color: rgba(255,159,67,0.35); }
+    .lat { font-size: 10px; min-width: 44px; text-align: right; color: var(--muted); }
+    .lat.g { color: var(--green); } .lat.a { color: var(--amber); } .lat.r { color: var(--red); }
+    /* pause */
+    .pause-row { display: flex; gap: 6px; }
+    .pause-row button { flex: 1; }
+    #pause-state { font-size: 10px; margin-top: 8px; color: var(--muted); }
+    /* settings switches */
+    .sw { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+    .sw input { opacity: 0; width: 0; height: 0; }
+    .sw i { position: absolute; inset: 0; border: 1px solid var(--muted); border-radius: 10px; cursor: pointer; transition: .2s; }
+    .sw i::before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; border-radius: 50%; background: var(--muted); transition: .2s; }
+    .sw input:checked + i { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.08); }
+    .sw input:checked + i::before { transform: translateX(18px); background: var(--green); }
+    .sw.busy { opacity: .4; pointer-events: none; }
+    /* domain sheet */
+    #sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; display: none; }
+    #sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 301; background: #131618; border-top: 1px solid rgba(0,212,255,0.35); padding: 14px 14px calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateY(100%); transition: transform .2s; }
+    #sheet.open { transform: translateY(0); }
+    #sheet-dom { font-size: 13px; color: var(--green); word-break: break-all; margin-bottom: 4px; }
+    #sheet-sub { font-size: 9px; color: var(--muted); margin-bottom: 12px; }
+    #sheet .btn-row2 button { flex: 1; padding: 10px; }
+    .d-row, .d-bar-row.tap { cursor: pointer; }
+    #ipm-seg.busy { opacity: 0.5; pointer-events: none; }
+    #ipm-desc { font-size: 9px; color: var(--text); line-height: 1.6; margin: 10px 0 4px; min-height: 30px; }
+    #ipm-desc b { color: var(--green); font-weight: normal; }
+    .d-stat.wrap { align-items: flex-start; }
+    .d-stat.wrap .v { white-space: normal; overflow: visible; }
+    .chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+    .chip { font-size: 9px; color: var(--blue); border: 1px solid rgba(74,255,180,0.3); border-radius: 2px; padding: 1px 6px; white-space: nowrap; }
+    .auto-sub { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
+    .term {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 3px;
+      padding: 8px 10px; font-size: 9px; color: var(--text);
+      overflow-y: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.5;
+    }
+    #upd-log { height: 160px; }
+    .log-ok { color: var(--green); } .log-err { color: var(--red); } .log-info { color: var(--muted); }
+
+    /* ── SYSTEM ── */
+    .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #1a1f24; font-size: 10px; }
+    .row:last-child { border-bottom: none; }
+    .row .rn { flex: 1; min-width: 0; }
+    .row .rn b { display: block; color: var(--text); font-weight: normal; font-size: 11px; }
+    .row .rn span { display: block; color: var(--muted); font-size: 9px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row.ctl .rn span { white-space: normal; line-height: 1.45; }
+    .rule-row .pat { flex: none; color: var(--muted); font-size: 8px; letter-spacing: .6px; text-transform: uppercase; }
+    .pill { flex-shrink: 0; font-size: 8px; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 2px; border: 1px solid; text-transform: uppercase; }
+    .pill.ok   { color: var(--green);  border-color: rgba(0,212,255,0.35); background: rgba(0,212,255,0.07); }
+    .pill.warn { color: var(--amber);  border-color: rgba(255,159,67,0.4);  background: rgba(255,159,67,0.07); }
+    .pill.bad  { color: var(--red);    border-color: rgba(255,107,107,0.45); background: rgba(255,107,107,0.08); }
+    .pill.skip { color: var(--muted);  border-color: var(--border);        background: transparent; }
+
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .act {
+      padding: 10px 4px; background: transparent; border: 1px solid var(--border);
+      border-radius: 3px; color: var(--text); font-family: var(--mono); font-size: 10px;
+      letter-spacing: 0.8px; text-transform: uppercase; cursor: pointer;
+    }
+    .act.g { border-color: rgba(0,212,255,0.35); color: var(--green); }
+    .act.a { border-color: rgba(255,159,67,0.4); color: var(--amber); }
+    .act.b { border-color: rgba(74,255,180,0.4); color: var(--blue); }
+    .act.p { border-color: rgba(204,136,255,0.4); color: var(--purple); }
+    .act:disabled { opacity: 0.35; }
+    .act.busy { animation: btnPulse 1s ease-in-out infinite; }
+    #act-result { margin-top: 8px; font-size: 9px; color: var(--muted); min-height: 12px; }
+    .note { font-size: 9px; color: var(--muted); line-height: 1.6; margin-top: 8px; }
+    .note b { color: var(--text); font-weight: normal; }
+
+    /* ── LOG ── */
+    #tab-log { display: none; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+    #tab-log.active { display: flex; }
+    .log-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .fbtn {
+      padding: 3px 7px; background: transparent; border: 1px solid var(--border); border-radius: 2px;
+      font-family: var(--mono); font-size: 9px; color: var(--muted); cursor: pointer; letter-spacing: 0.5px;
+    }
+    .fbtn.on.info  { color: var(--green);  border-color: rgba(0,212,255,0.35); }
+    .fbtn.on.warn  { color: var(--amber);  border-color: rgba(255,159,67,0.4); }
+    .fbtn.on.err   { color: var(--red);    border-color: rgba(255,107,107,0.45); }
+    .fbtn.on.src   { color: var(--blue);   border-color: rgba(74,255,180,0.4); }
+    .fbtn.danger   { color: var(--red); }
+    .log-sel { background: #1a1d20; border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 9px; padding: 2px 4px; border-radius: 2px; }
+    #log-count { margin-left: auto; font-size: 9px; color: var(--muted); }
+    #log-body { flex: 1; min-height: 0; border: none; border-radius: 0; padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 36px); font-size: 9.5px; }
+    .ll { display: block; }
+    .ll .t { color: var(--muted); }
+    .ll .s { color: var(--blue); }
+    .ll.INFO  .m { color: var(--text); }
+    .ll.WARN  .m { color: var(--amber); }
+    .ll.ERROR .m { color: var(--red); }
+    .ll.DEBUG .m { color: var(--muted); }
+
+    /* ── FOOTER ── */
+    footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 4px 12px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+      background: var(--dim); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 9px; color: var(--muted); gap: 6px; z-index: 100;
+    }
+    #src-info { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    footer button {
+      background: transparent; border: 1px solid var(--muted); color: var(--muted);
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 3px 7px; border-radius: 2px; cursor: pointer; white-space: nowrap;
+    }
+
+    .toast {
+      position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 36px);
+      transform: translateX(-50%) translateY(10px); opacity: 0; transition: all .25s;
+      background: #131618; border: 1px solid var(--border); color: var(--text);
+      font-size: 10px; padding: 8px 14px; border-radius: 3px; pointer-events: none; z-index: 200;
+      max-width: 90vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok  { border-color: rgba(0,212,255,0.4); color: var(--green); }
+    .toast.err { border-color: rgba(255,107,107,0.5); color: var(--red); }
+
+    /* press feedback: every button, every tappable row */
+    button { transition: transform .08s, filter .08s, background-color .15s; }
+    button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.6); }
+    button.working { animation: btnPulse .9s ease-in-out infinite; pointer-events: none; }
+    .src-row:active, .d-row:active, .d-bar-row.tap:active, .rule-row:active { background: rgba(0,212,255,0.07); }
+    #busy-bar { position: relative; height: 2px; background: transparent; overflow: hidden; flex-shrink: 0; }
+    #busy-bar::after { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: var(--green); opacity: 0; }
+    #busy-bar.on::after { opacity: .9; animation: busySlide 1s linear infinite; }
+    @keyframes busySlide { from { left: -40%; } to { left: 100%; } }
+
+    .fatal { margin: 30px 14px; padding: 16px; border: 1px solid rgba(255,107,107,0.5); background: #2a1012; color: var(--red); font-size: 10px; line-height: 1.7; border-radius: 3px; }
+
+    /* ── ipset-arm64 additions (same family as DNSCrypt Monitor) ── */
+    .callout { margin-top: 10px; padding: 10px; border: 1px solid rgba(255,159,67,0.4); background: #2a1a08; border-radius: 3px; font-size: 10px; color: var(--amber); line-height: 1.6; }
+    .callout button { margin-top: 8px; }
+    .src-row .si span.fail { color: var(--red); white-space: normal; }
+    .src-row .si span.ok { color: #4a90a8; }
+    .src-row .si span.desc { white-space: normal; line-height: 1.45; }
+    .src-save { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
+    .src-save .hint { flex: 1; font-size: 9px; color: var(--amber); }
+    .entry-list { max-height: 260px; overflow-y: auto; margin-top: 8px; }
+    .entry-list .rule-row span { font-size: 10.5px; }
+    .ipl { color: var(--text); }
+    .verdict.g { color: var(--green); } .verdict.r { color: var(--red); } .verdict.a { color: var(--amber); } .verdict.m { color: var(--muted); }
+    .kv-block { font-size: 10px; line-height: 1.7; }
+    .kv-block .k { color: var(--muted); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .form-grid select, .form-grid input, .sel { width: 100%; min-width: 0; background: #1a1d20; border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 10px; padding: 7px 6px; border-radius: 2px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid label { display: block; font-size: 8px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+    .set-row { cursor: pointer; }
+    .set-row .pat { min-width: 60px; text-align: right; }
+    #sheet { max-height: 80vh; display: flex; flex-direction: column; }
+    #sheet-body { overflow-y: auto; min-height: 0; flex: 1; }
+    #sheet-body .rule-list { max-height: 38vh; }
+    .sheet-close { position: absolute; top: 10px; right: 12px; }
+    details.adv { border: 1px solid var(--border); border-radius: 3px; padding: 0 10px; }
+    details.adv > summary { list-style: none; cursor: pointer; padding: 10px 0; font-size: 10px; color: var(--blue); }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .mt8 { margin-top: 8px; }
+    #upd-log { height: 140px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px solid var(--blue); outline-offset: 1px; }
+
+    /* ── header logo: the original ipset-arm64 node icon ── */
+    .hdr-top { align-items: center; }
+    .logo { width: 26px; height: 26px; flex-shrink: 0; }
+    .logo svg { width: 26px; height: 26px; display: block; animation: iconPulse 3s ease-in-out infinite; }
+    @keyframes iconPulse {
+      0%,100% { filter: drop-shadow(0 0 4px rgba(74,255,180,0.45)) drop-shadow(0 0 9px rgba(0,212,255,0.2)); }
+      50% { filter: drop-shadow(0 0 7px rgba(74,255,180,0.85)) drop-shadow(0 0 14px rgba(0,212,255,0.45)); }
+    }
+    .logo .ring { animation: ringSpin 9s linear infinite; transform-origin: 19px 19px; }
+    @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .logo .nb1 { animation: nodeBlink 2.2s ease-in-out infinite; }
+    .logo .nb2 { animation: nodeBlink 2.2s ease-in-out infinite 0.7s; }
+    .logo .nb3 { animation: nodeBlink 2.2s ease-in-out infinite 1.4s; }
+    .logo .nb4 { animation: nodeBlink 2.2s ease-in-out infinite 0.35s; }
+    @keyframes nodeBlink { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+    .hbtn { flex-shrink: 0; margin-left: 8px; padding: 5px 11px; border: 1px solid rgba(74,255,180,0.45); border-radius: 3px;
+      color: var(--blue); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
+    .hbtn:active { background: rgba(74,255,180,0.12); }
+    .inrow button.b { border-color: rgba(74,255,180,0.4); color: var(--blue); }
+    #probe-out { margin-top: 10px; }
+    .row .rn span.wrap { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.55; }
+    .row .rn span.wrap span { display: inline; white-space: normal; overflow: visible; text-overflow: clip; font-size: inherit; margin: 0; }
+    /* per-list direction */
+    .src-row { cursor: default; }
+    .src-row label.pick { display: flex; gap: 9px; align-items: flex-start; flex: 1; min-width: 0; cursor: pointer; }
+    .src-row .src-ctl { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+    .seg.mini { margin-top: 0; flex: 1; }
+    .seg.mini button { padding: 4px 2px; font-size: 8.5px; }
+    .seg.mini.busy { opacity: .45; pointer-events: none; }
+    .src-ctl .btn-s { padding: 4px 9px; font-size: 9px; }
+    .dir-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 9px; color: var(--muted); }
+    /* app search */
+    .app-results { border: 1px solid var(--border); border-radius: 2px; margin-top: 4px; max-height: 190px; overflow-y: auto; display: none; background: #131618; }
+    .app-results.show { display: block; }
+    .app-row { padding: 7px 9px; font-size: 10px; color: var(--text); cursor: pointer; border-bottom: 1px solid #1a1f24; }
+    .app-row:last-child { border-bottom: none; }
+    .app-row:active { background: rgba(0,212,255,0.08); }
+    .app-row .uid { color: var(--muted); font-size: 9px; margin-left: 6px; }
+    .app-chip { display: none; align-items: center; gap: 8px; margin-top: 6px; font-size: 10px; }
+    .app-chip.show { display: flex; }
+    .app-chip span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--green); }
+    .rule-row button.btn-s { color: var(--green); border-color: rgba(0,212,255,0.35); }
+
+  </style>
 </head>
 <body>
 
 <header>
-  <div class="header-left">
-    <div class="logo-icon">
+  <div class="hdr-top">
+    <div class="logo" aria-hidden="true">
       <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="nodeGrad" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
@@ -189,779 +488,1183 @@
         <line x1="19" y1="19" x2="19" y2="31" stroke="rgba(74,255,180,0.35)" stroke-width="1"/>
         <line x1="19" y1="19" x2="7"  y2="19" stroke="rgba(0,212,255,0.35)" stroke-width="1"/>
         <circle cx="19" cy="19" r="4.2" fill="#0f2a22" stroke="url(#nodeGrad)" stroke-width="1.3"/>
-        <circle class="node-blink"  cx="19" cy="7"  r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
-        <circle class="node-blink2" cx="31" cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
-        <circle class="node-blink3" cx="19" cy="31" r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
-        <circle class="node-blink4" cx="7"  cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <circle class="nb1" cx="19" cy="7"  r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="nb2" cx="31" cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
+        <circle class="nb3" cx="19" cy="31" r="2.3" fill="#0f2a22" stroke="#4affb4" stroke-width="1.1"/>
+        <circle class="nb4" cx="7"  cy="19" r="2.3" fill="#0f2a22" stroke="#00d4ff" stroke-width="1.1"/>
         <ellipse class="ring" cx="19" cy="19" rx="16.5" ry="16.5" fill="none" stroke="url(#ringGrad2)" stroke-width="1" stroke-dasharray="3 4"/>
       </svg>
     </div>
-    <div>
-      <div class="header-title">ipset-arm64</div>
-      <div class="header-sub">Android Arm64 · Dynamic Firewall</div>
-    </div>
-  </div>
-  <div class="header-right" style="display:flex; align-items:center; gap:8px;">
-    <span class="version-badge">v7.24-r3</span>
-    <a href="help.html" class="help-badge"><span class="help-icon">?</span>HELP</a>
-    <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+    <div class="htitle">ipset-arm64</div>
+    <div id="hdr-ver"></div>
+    <div id="clock">--:--:--</div>
+    <a class="hbtn" href="help.html">Help</a>
   </div>
 </header>
 
+<div id="busy-bar"></div>
+<div id="banner"><span class="live-dot"></span>Connecting…</div>
+
+<div class="stats">
+  <div class="sc"><div class="lbl">Networks</div><div class="val" id="s-net">—</div></div>
+  <div class="sc"><div class="lbl">Blocked out</div><div class="val r" id="s-out">—</div></div>
+  <div class="sc"><div class="lbl">Blocked in</div><div class="val a" id="s-in">—</div></div>
+  <div class="sc"><div class="lbl">Lists</div><div class="val b" id="s-lists">—</div></div>
+</div>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="dash" onclick="showTab('dash')">Dashboard</button>
+  <button class="tab" data-tab="lists" onclick="showTab('lists')">Lists<span class="tab-dot" id="lists-dot"></span></button>
+  <button class="tab" data-tab="tools" onclick="showTab('tools')">Tools</button>
+  <button class="tab" data-tab="sys" onclick="showTab('sys')">System<span class="tab-dot" id="sys-dot"></span></button>
+  <button class="tab" data-tab="log" onclick="showTab('log')">Log</button>
+</nav>
+
 <main>
-
-  <div class="callout" id="bridge-warning">
-    <div class="callout-icon">⚠</div>
-    <div class="callout-text" id="bridge-warning-text"></div>
-  </div>
-
-  <!-- 01 STATUS -->
-  <section id="status">
-    <div class="section-header">
-      <div class="section-title"><span class="section-num">01</span><h2>Status</h2></div>
-      <button class="btn-cyan spin-btn" id="refresh-btn" onclick="refreshStatus()">
-        <svg class="spinner" id="refresh-spinner" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="42 14"/></svg>
-        Refresh
-      </button>
-    </div>
-    <div class="card">
-      <div id="status-out" class="status-body">Loading...</div>
-    </div>
-  </section>
-
-  <!-- 02 SETS -->
-  <section id="sets">
-    <div class="section-header"><div class="section-title"><span class="section-num">02</span><h2>Sets</h2></div></div>
-    <p class="lede">Nothing exists until you create it here. No default set, no default rule.</p>
-    <div class="card">
-      <div class="row">
-        <input id="new-set-name" placeholder="name, e.g. testblock">
-        <select id="new-set-type">
-          <option value="hash:ip">hash:ip — single addresses</option>
-          <option value="hash:net">hash:net — networks / CIDR</option>
-          <option value="hash:mac">hash:mac — MAC addresses</option>
-          <option value="hash:ip,mac">hash:ip,mac — address + MAC pair</option>
-          <option value="hash:net,net">hash:net,net — network pairs</option>
-          <option value="hash:ip,port">hash:ip,port — address + port</option>
-          <option value="hash:net,port">hash:net,port — network + port</option>
-          <option value="hash:net,iface">hash:net,iface — network + interface</option>
-        </select>
-      </div>
-      <div class="row">
-        <span id="new-set-family-label" style="align-self:center;font-family:var(--mono);font-size:12.5px;color:var(--text-dim);white-space:nowrap">Address family</span>
-        <select id="new-set-family" title="Address family — IPv6 sets hold IPv6 addresses only">
-          <option value="">IPv4 (default)</option>
-          <option value="inet6">IPv6</option>
-        </select>
-      </div>
-      <div class="row">
-        <button class="btn-primary" style="width:100%" onclick="createSet()">+ Create set</button>
-      </div>
-      <div id="set-list"></div>
-    </div>
-  </section>
-
-  <!-- SET DETAIL (no section number - reached via tapping a set tile, appears right below Sets) -->
-  <section id="detail" style="display:none;">
-    <div class="section-header"><div class="section-title"><h2 id="detail-title">Set</h2></div></div>
-    <div class="card">
-      <div class="row">
-        <input id="ip-input" placeholder="IP or CIDR, e.g. 1.2.3.4">
-        <button class="btn-primary" onclick="addIp()">+ Add</button>
-      </div>
-      <div id="member-list"></div>
-    </div>
-  </section>
-
-  <!-- 03 CONFIG -->
-  <section id="config-section">
-    <div class="section-header"><div class="section-title"><span class="section-num">03</span><h2>Config</h2></div></div>
-    <p class="lede">Firewall rules for any set - independent of scrolling through its members. Pick a set below.</p>
-    <div class="card">
-      <div class="row">
-        <select id="config-chain"><option>OUTPUT</option><option>INPUT</option><option>FORWARD</option></select>
-        <select id="config-dir"><option>dst</option><option>src</option></select>
-      </div>
-      <div class="row">
-        <select id="config-target"><option>DROP</option><option>ACCEPT</option><option>REJECT</option><option>RETURN</option></select>
-        <select id="config-set-select" autocomplete="off" onchange="configSelectSet(this.value)"><option value="">none</option></select>
-      </div>
-      <div class="row">
-        <input id="config-app-search" placeholder="Search app package (or paste name), e.g. instagram" oninput="onAppSearchInput(this.value)" onfocus="onAppSearchFocus()">
-      </div>
-      <div id="config-app-results" class="app-results"></div>
-      <div id="config-app-chip-row" class="app-chip-row">
-        <span class="chip">Filtering by app</span>
-        <span id="config-app-chip-label" style="font-size:11.5px; color:var(--text-bright);"></span>
-        <button class="btn-ghost" onclick="clearApp()" style="flex:none; padding:4px 10px; font-size:10.5px; margin-left:auto;">Clear</button>
-      </div>
-      <p class="lede" style="margin:4px 0 0;">Per-app filtering only works with chain = OUTPUT (Android can't attribute incoming traffic to an app).</p>
-
-      <div id="config-slot-rows" style="margin-top:6px;">
-        <div class="row" style="align-items:center;">
-          <span id="rule-status-1" class="rule-status-badge"><span class="dot"></span>inactive</span>
-          <button id="rule-btn-1" class="btn-cyan" onclick="toggleSlot(1)" style="margin-left:auto;" disabled>Enable rule</button>
-        </div>
-        <div class="row" style="align-items:center;">
-          <span id="rule-status-2" class="rule-status-badge"><span class="dot"></span>inactive</span>
-          <button id="rule-btn-2" class="btn-cyan" onclick="toggleSlot(2)" style="margin-left:auto;" disabled>Enable rule</button>
-        </div>
-        <div class="row" style="align-items:center;">
-          <span id="rule-status-3" class="rule-status-badge"><span class="dot"></span>inactive</span>
-          <button id="rule-btn-3" class="btn-cyan" onclick="toggleSlot(3)" style="margin-left:auto;" disabled>Enable rule</button>
-        </div>
-      </div>
+  <!-- ═════════════ DASHBOARD ═════════════ -->
+  <div class="pane active" id="tab-dash">
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--green)"></span>Overview</div>
+      <div id="ov-body"><div class="empty">Waiting for data…</div></div>
+      <div id="ov-empty"></div>
     </div>
 
-    <div class="row" style="margin-top:12px;">
-      <button id="config-destroy-btn" class="btn-danger" style="width:100%" onclick="destroySetFromConfig()" disabled>Delete entire set</button>
-    </div>
-  </section>
-
-  <!-- 04 ACTIVE RULES -->
-  <section id="rules">
-    <div class="section-header"><div class="section-title"><span class="section-num">04</span><h2>Active Rules</h2></div></div>
-    <div class="card">
-      <div id="rules-out" class="status-body">-</div>
-    </div>
-  </section>
-
-  <!-- 05 CONNECTIVITY TEST -->
-  <section id="ping-section">
-    <div class="section-header"><div class="section-title"><span class="section-num">05</span><h2>Connectivity Test</h2></div></div>
-    <p class="lede">Ping any address directly - no Termux/adb needed. Useful right after enabling a rule.</p>
-    <div class="card">
-      <div class="row">
-        <input id="ping-input" placeholder="IP, e.g. 104.20.23.154">
-        <button class="btn-cyan" onclick="runPing()">Ping</button>
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--blue)"></span>Protection</div>
+      <div id="master-row"></div>
+      <div class="sub-h"><span>Pause</span></div>
+      <div class="pause-row">
+        <button class="btn-s a" onclick="pauseFor(15)">15 min</button>
+        <button class="btn-s a" onclick="pauseFor(60)">1 hour</button>
+        <button class="btn-s a" onclick="pauseFor(240)">4 hours</button>
+        <button class="btn-s" id="resume-btn" onclick="resumeNow()">Resume</button>
       </div>
-      <pre class="log-pre" id="ping-out" style="margin-top:8px;">-</pre>
+      <div id="pause-state"></div>
     </div>
-  </section>
 
-  <!-- 06 THREAT FEEDS -->
-  <section id="feeds-section">
-    <div class="section-header"><div class="section-title"><span class="section-num">06</span><h2>Threat Feeds</h2></div></div>
-    <p class="lede">FireHOL level1 (dshield + feodo + spamhaus_drop, bogon ranges excluded) - known-malicious network ranges from multiple sources. Off by default; nothing downloads until you press Update.</p>
-    <div class="card">
-      <div id="feed-status" class="status-body">Loading...</div>
-      <div class="row" style="margin-top:10px;">
-        <button class="btn-primary" style="width:100%" onclick="updateFeedNow()">Update Now</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 07 BOOT LOG -->
-  <section id="bootlog-section">
-    <div class="section-header">
-      <div class="section-title"><span class="section-num">07</span><h2>Boot Restore Log</h2></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn-cyan" onclick="refreshBootlog()">Refresh</button>
-        <button class="btn-danger" onclick="clearBootlog()">Clear</button>
-      </div>
-    </div>
-    <p class="lede">What <code>service.sh</code> did the last time the device booted - runs even if you never open this WebUI.</p>
-    <div class="code-block">
-      <div class="code-header">
-        <span class="code-label">service.log</span>
-        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
-      </div>
-      <pre class="log-pre" id="bootlog-out">-</pre>
-    </div>
-  </section>
-
-  <!-- 08 LOG -->
-  <section id="log-section">
-    <div class="section-header">
-      <div class="section-title"><span class="section-num">08</span><h2>Command Log</h2></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span id="log-size" class="muted">0 B</span>
-        <button class="btn-danger" onclick="clearCmdLog()">Clear</button>
-      </div>
-    </div>
-    <div class="code-block">
-      <div class="code-header">
-        <span class="code-label">Last command</span>
-        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
-      </div>
-      <pre class="log-pre" id="log">-</pre>
-    </div>
-  </section>
-
-  <footer>
-    <div class="footer-left"><div class="dot"></div> ipset-arm64 · Android Arm64 · Tears Burn</div>
-    <a href="https://github.com/nikakvo/ipset-arm64" target="_blank">GitHub →</a>
-  </footer>
-
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-icon" id="modal-icon">ⓘ</div>
-      <div class="modal-text" id="modal-text"></div>
-      <div class="modal-actions" id="modal-actions"></div>
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--red)"></span>Blocked since the rules were applied<span class="s-note c-m" id="since-note"></span></div>
+      <div class="d-stat"><span class="k">Outgoing connections</span><span class="v r" id="d-out">—</span></div>
+      <div class="d-stat"><span class="k">Incoming packets</span><span class="v a" id="d-in">—</span></div>
+      <div class="d-stat"><span class="k">Hotspot clients</span><span class="v m" id="d-fwd">—</span></div>
+      <div class="d-stat"><span class="k">By your advanced rules</span><span class="v m" id="d-adv">—</span></div>
     </div>
   </div>
 
+  <!-- ═════════════ LISTS ═════════════ -->
+  <div class="pane" id="tab-lists">
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--amber)"></span>Update</div>
+      <div id="upd-status">Tap Update to download the selected lists</div>
+      <button class="upd-btn" id="upd-btn" onclick="startUpdate()">Update lists</button>
+      <div class="term" id="upd-log"><span class="log-info">No update run yet in this session.</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--red)"></span>Blocklists<span class="s-note c-m" id="src-note"></span></div>
+      <div id="src-body"><div class="empty">Loading…</div></div>
+      <div class="src-save">
+        <span class="hint" id="src-hint"></span>
+        <button class="btn-s" id="src-save" onclick="saveSources()" disabled>Save selection</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--blue)"></span>Automatic update</div>
+      <div class="seg" id="auto-seg">
+        <button data-v="off" onclick="setAuto('off')">Off</button>
+        <button data-v="daily" onclick="setAuto('daily')">Daily</button>
+        <button data-v="weekly" onclick="setAuto('weekly')">Weekly</button>
+      </div>
+      <div class="note" id="auto-note"></div>
+    </div>
+  </div>
+
+  <!-- ═════════════ TOOLS ═════════════ -->
+  <div class="pane" id="tab-tools">
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--blue)"></span>Check an address</div>
+      <div class="inrow">
+        <input id="chk-in" placeholder="IPv4 or IPv6 address" autocapitalize="off" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkIp()">
+        <button onclick="checkIp()">Check</button>
+      </div>
+      <div class="inrow mt8">
+        <input id="chk-port" value="443" inputmode="numeric" aria-label="Port" style="flex:0 0 72px" onkeydown="if(event.key==='Enter')testConn()">
+        <button class="b" style="flex:1" onclick="testConn()">Test connection</button>
+      </div>
+      <div id="chk-out"></div>
+      <div id="probe-out"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--red)"></span>Your blocklist<span class="s-note c-m" id="bl-note"></span></div>
+      <div class="inrow">
+        <input id="bl-in" placeholder="Address or network, e.g. 203.0.113.0/24" autocapitalize="off" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')listAdd('block')">
+        <button onclick="listAdd('block')">Block</button>
+      </div>
+      <div class="dir-row"><span>Blocks</span><div class="seg mini" id="dir-user">
+        <button data-v="out" onclick="setDir('user','out',this)">Outgoing</button><button data-v="in" onclick="setDir('user','in',this)">Incoming</button><button data-v="both" onclick="setDir('user','both',this)">Both</button></div></div>
+      <div class="entry-list" id="bl-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--green)"></span>Your allowlist<span class="s-note c-m" id="al-note"></span></div>
+      <div class="inrow">
+        <input id="al-in" placeholder="Never block this address or network" autocapitalize="off" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')listAdd('allow')">
+        <button onclick="listAdd('allow')">Allow</button>
+      </div>
+      <div class="entry-list" id="al-list"></div>
+      <div class="note">Both lists are also in <b>/sdcard/ipset-arm64/</b> as plain text files. Edit them with any app; changes apply within 10 seconds.</div>
+    </div>
+
+    <div class="section">
+      <details class="adv" id="adv" ontoggle="if(this.open)loadAdvanced()">
+        <summary>Advanced: your own sets and firewall rules</summary>
+        <div class="note" style="margin-top:0">For experts. Your rules run before the lists above, exactly as written, for IPv4 or IPv6 depending on the set. ACCEPT and DROP/REJECT are final; RETURN means "no decision here".</div>
+
+        <div class="sub-h"><span>Sets</span><span id="adv-sets-n"></span></div>
+        <div class="rule-list" id="adv-sets"></div>
+        <div class="form-grid">
+          <div><label for="ns-name">New set</label><input id="ns-name" placeholder="name" autocapitalize="off" spellcheck="false"></div>
+          <div><label for="ns-type">Type</label><select id="ns-type"></select></div>
+          <div><label for="ns-fam">Family</label><select id="ns-fam"><option value="">IPv4</option><option value="inet6">IPv6</option></select></div>
+          <div style="align-self:end"><button class="btn-s" style="width:100%" onclick="createSet()">Create set</button></div>
+        </div>
+
+        <div class="sub-h"><span>Rules</span><span id="adv-rules-n"></span></div>
+        <div class="rule-list" id="adv-rules"></div>
+        <div class="form-grid">
+          <div><label for="nr-set">Set</label><select id="nr-set"></select></div>
+          <div><label for="nr-chain">Traffic</label><select id="nr-chain" onchange="onChainChange()"><option value="OUTPUT">Outgoing</option><option value="INPUT">Incoming</option><option value="FORWARD">Hotspot</option></select></div>
+          <div><label for="nr-dir">Match</label><select id="nr-dir"><option>dst</option><option>src</option><option>dst,dst</option><option>src,src</option><option>src,dst</option><option>dst,src</option></select></div>
+          <div><label for="nr-target">Action</label><select id="nr-target"><option>DROP</option><option>REJECT</option><option>ACCEPT</option><option>RETURN</option></select></div>
+          <div class="full"><label for="nr-app-q">Only for one app (outgoing only)</label>
+            <input id="nr-app-q" placeholder="Search an app, e.g. waze" autocapitalize="off" autocomplete="off" spellcheck="false" oninput="appSearch(this.value)" onfocus="loadApps()">
+            <div class="app-results" id="nr-app-res"></div>
+            <div class="app-chip" id="nr-app-chip"><span id="nr-app-lbl"></span><button class="btn-s" onclick="clearApp()">Clear</button></div>
+          </div>
+          <div class="full"><button class="btn-s" style="width:100%" onclick="addRule()">Add rule</button></div>
+        </div>
+        <div style="height:10px"></div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ═════════════ SYSTEM ═════════════ -->
+  <div class="pane" id="tab-sys">
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--green)"></span>Health</div>
+      <div id="sys-health"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--blue)"></span>Settings</div>
+      <div id="sys-settings"></div>
+      <div class="sub-h"><span>Outgoing connection to a blocked address</span></div>
+      <div class="seg" id="tgt-seg">
+        <button data-v="REJECT" onclick="setSetting('OUT_TARGET','REJECT')">Refuse at once</button>
+        <button data-v="DROP" onclick="setSetting('OUT_TARGET','DROP')">Drop silently</button>
+      </div>
+      <div class="note">Refuse at once: the app gets an immediate error. Drop silently: the app waits until its own timeout.</div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--amber)"></span>Actions</div>
+      <div class="actions">
+        <button class="act g" onclick="doApply()">Re-apply rules</button>
+        <button class="act b" onclick="loadStatus(true)">Refresh status</button>
+      </div>
+      <div id="act-result"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span class="s-accent" style="background:var(--muted)"></span>Device</div>
+      <div id="sys-dev"></div>
+    </div>
+  </div>
+
+  <!-- ═════════════ LOG ═════════════ -->
+  <div class="pane" id="tab-log">
+    <div class="log-bar">
+      <select class="log-sel" id="log-src" onchange="loadLog(true)">
+        <option value="module">Module log</option>
+        <option value="boot">Last boot</option>
+        <option value="update">Last update</option>
+      </select>
+      <button class="fbtn on info" data-lv="INFO" onclick="toggleFilter(this)">info</button>
+      <button class="fbtn on warn" data-lv="WARN" onclick="toggleFilter(this)">warn</button>
+      <button class="fbtn on err" data-lv="ERROR" onclick="toggleFilter(this)">error</button>
+      <button class="fbtn danger" id="log-clear" onclick="clearLog()">clear</button>
+      <span id="log-count"></span>
+    </div>
+    <div class="term" id="log-body"><span class="log-info">Loading…</span></div>
+  </div>
 </main>
 
+<footer>
+  <span id="last-refresh">—</span>
+  <span id="src-info"></span>
+  <button onclick="refreshNow()">↺ Refresh</button>
+</footer>
+
+<div id="sheet-bg" onclick="closeSheet()"></div>
+<div id="sheet">
+  <button class="btn-s sheet-close" onclick="closeSheet()">Close</button>
+  <div id="sheet-dom"></div>
+  <div id="sheet-sub"></div>
+  <div id="sheet-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-/*
-  Bridge layer: KernelSU / SukiSU-Ultra WebUI managers inject a `ksu` object
-  with an `exec(command, optionsJson, callbackFuncName)` function — options
-  MUST be a JSON string (matches the official `kernelsu` npm library). The
-  manager calls window[callbackFuncName](exitCode, stdout, stderr) when done.
+'use strict';
 
-  If the buttons don't respond, check the Log panel and the warning banner
-  above — every failed bridge call also prints the equivalent shell command
-  so it can be run manually via adb shell / Termux (su).
-*/
+const MODDIR = '/data/adb/modules/ipset_arm64';
+const CTL = 'sh ' + MODDIR + '/ctl.sh';
+const IPCTL = 'sh ' + MODDIR + '/ipctl.sh';
 
-function formatCount(n) {
-  const num = parseInt(n, 10);
-  return isNaN(num) ? n : num.toLocaleString("en-US");
+// ═════════════════════════════════════════════════════════════════════════
+// Root bridge. Managers expose ksu.exec in two shapes: the callback form
+// ksu.exec(cmd, options, cbName) and a legacy one-argument form that returns
+// a string. Output is base64-wrapped so multi-line text survives both.
+// ═════════════════════════════════════════════════════════════════════════
+let EXEC_MODE = null;
+let _cbSeq = 0;
+
+function hasBridge() {
+  return typeof ksu !== 'undefined' && ksu && typeof ksu.exec === 'function';
 }
 
-function customAlert(message) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("modal-overlay");
-    document.getElementById("modal-icon").className = "modal-icon info";
-    document.getElementById("modal-icon").textContent = "ⓘ";
-    document.getElementById("modal-text").textContent = message;
-    const actions = document.getElementById("modal-actions");
-    actions.innerHTML = "";
-    const ok = document.createElement("button");
-    ok.className = "btn-cyan";
-    ok.textContent = "OK";
-    ok.onclick = () => { overlay.classList.remove("show"); resolve(); };
-    actions.appendChild(ok);
-    overlay.classList.add("show");
-  });
-}
-
-function customConfirm(message) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("modal-overlay");
-    document.getElementById("modal-icon").className = "modal-icon warn";
-    document.getElementById("modal-icon").textContent = "⚠";
-    document.getElementById("modal-text").textContent = message;
-    const actions = document.getElementById("modal-actions");
-    actions.innerHTML = "";
-    const cancel = document.createElement("button");
-    cancel.className = "btn-ghost";
-    cancel.textContent = "Cancel";
-    cancel.onclick = () => { overlay.classList.remove("show"); resolve(false); };
-    const del = document.createElement("button");
-    del.className = "btn-danger";
-    del.textContent = "Delete";
-    del.onclick = () => { overlay.classList.remove("show"); resolve(true); };
-    actions.appendChild(cancel);
-    actions.appendChild(del);
-    overlay.classList.add("show");
-  });
-}
-
-const MODDIR = "/data/adb/modules/ipset_arm64";
-const IPCTL = "sh " + MODDIR + "/ipctl.sh";
-
-let selectedSet = null;
-let busy = 0;
-
-function setBusy(state) {
-  busy += state ? 1 : -1;
-  const spinner = document.getElementById("refresh-spinner");
-  spinner.style.display = busy > 0 ? "inline-block" : "none";
-  document.querySelectorAll("button").forEach(b => b.disabled = busy > 0);
-}
-
-function ksuExec(cmd) {
-  return new Promise((resolve) => {
-    if (typeof window.ksu === "undefined" || typeof window.ksu.exec !== "function") {
-      showBridgeWarning(cmd);
-      resolve({ exitCode: -1, stdout: "", stderr: "ksu.exec not available in this WebUI" });
-      return;
-    }
-    const cbName = "ksu_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-    window[cbName] = (exitCode, stdout, stderr) => {
-      delete window[cbName];
-      resolve({ exitCode, stdout: stdout || "", stderr: stderr || "" });
+function callbackExec(cmd, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const name = '__ipsa_cb_' + (++_cbSeq) + '_' + Date.now();
+    let settled = false;
+    window[name] = (errno, stdout, stderr) => {
+      if (settled) return;
+      settled = true;
+      try { delete window[name]; } catch (e) { window[name] = undefined; }
+      resolve({ errno: typeof errno === 'number' ? errno : 0, stdout: stdout == null ? '' : String(stdout), stderr: stderr == null ? '' : String(stderr) });
     };
-    try {
-      window.ksu.exec(cmd, JSON.stringify({ cwd: "/" }), cbName);
-    } catch (e) {
-      delete window[cbName];
-      showBridgeWarning(cmd);
-      resolve({ exitCode: -1, stdout: "", stderr: String(e) });
-    }
+    try { ksu.exec(cmd, '{}', name); }
+    catch (e) { settled = true; try { delete window[name]; } catch (_) {} reject(e); return; }
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { delete window[name]; } catch (_) {}
+      reject(new Error('exec timeout'));
+    }, timeoutMs || 30000);
   });
 }
 
-function showBridgeWarning(cmd) {
-  const box = document.getElementById("bridge-warning");
-  const text = document.getElementById("bridge-warning-text");
-  box.classList.add("show");
-  text.innerHTML = "<strong>WebUI bridge unavailable.</strong> Run manually via adb shell / Termux (su):\n\n" + cmd;
+function legacyExec(cmd) {
+  const r = ksu.exec(cmd);
+  return { errno: 0, stdout: typeof r === 'string' ? r : (r && r.stdout) || '', stderr: '' };
 }
 
-function formatBytes(n) {
-  if (n < 1024) return n + " B";
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-  return (n / (1024 * 1024)).toFixed(2) + " MB";
+async function detectExecMode() {
+  if (!hasBridge()) throw new Error('no root bridge');
+  try {
+    const r = await callbackExec('echo ipsa_ok', 3000);
+    if ((r.stdout || '').indexOf('ipsa_ok') >= 0) return 'callback';
+  } catch (e) {}
+  try {
+    const l = legacyExec('echo ipsa_ok');
+    if ((l.stdout || '').indexOf('ipsa_ok') >= 0) return 'legacy';
+  } catch (e) {}
+  throw new Error('root shell unavailable');
 }
 
-let cmdHistory = [];
-
-function log(text) {
-  cmdHistory.push(text);
-  if (cmdHistory.length > 30) cmdHistory.shift();
-  const joined = cmdHistory.join("\n\n" + "─".repeat(40) + "\n\n");
-  const el = document.getElementById("log");
-  el.textContent = joined;
-  el.scrollTop = el.scrollHeight;
-  document.getElementById("log-size").textContent = formatBytes(new Blob([joined]).size);
+function b64ToText(b64) {
+  if (!b64) return '';
+  try {
+    const bin = atob(b64);
+    return new TextDecoder('utf-8').decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+  } catch (e) { return ''; }
 }
 
-function clearCmdLog() {
-  cmdHistory = [];
-  document.getElementById("log").textContent = "-";
-  document.getElementById("log-size").textContent = "0 B";
+async function sh(cmd, timeoutMs) {
+  const wrapped = '{ ' + cmd + '; } 2>&1 | base64 | tr -d "\\n\\r"';
+  const res = EXEC_MODE === 'callback' ? await callbackExec(wrapped, timeoutMs) : legacyExec(wrapped);
+  return b64ToText((res.stdout || '').trim());
 }
 
-async function run(cmd) {
-  setBusy(true);
-  const res = await ksuExec(cmd);
-  setBusy(false);
-  log("$ " + cmd + "\n\n" + (res.stdout || "") + (res.stderr ? ("\n[stderr] " + res.stderr) : ""));
-  return res;
-}
+// Single-quote for the shell. Everything user-typed goes through this; the
+// scripts validate it again on their side.
+const q = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
 
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+// ── Press feedback ──────────────────────────────────────────────────────
+// The tapped button flashes (CSS); if the tap starts a root command, the
+// button pulses and ignores further taps until the answer is back, and a
+// thin bar runs under the header. Background refreshes show nothing.
+let _pressed = null, _pressedAt = 0, _busyN = 0;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest && e.target.closest('button');
+  if (b) { _pressed = b; _pressedAt = Date.now(); }
+}, true);
+const BG_CMD = /^(poll|status|log( \d+)?$|update-status|sources$|allow list|block list|settings|list|rules|apps|owned)/;
 
-function colorizeStatus(text) {
-  let t = escapeHtml(text);
-  t = t.replace(/\bOK\b/g, '<span class="tok-ok">OK</span>');
-  t = t.replace(/\bFAIL\b/g, '<span class="tok-fail">FAIL</span>');
-  t = t.replace(/\bMISSING\b/g, '<span class="tok-fail">MISSING</span>');
-  t = t.replace(/=\s*y\b/g, '= <span class="tok-ok">y</span>');
-  t = t.replace(/=\s*n\b/g, '= <span class="tok-fail">n</span>');
-  t = t.replace(/not set \/ not found/g, '<span class="tok-warn">not set / not found</span>');
-  t = t.replace(/possibly missing[^\n]*/g, (m) => '<span class="tok-fail">' + m + '</span>');
-  return t;
-}
-
-async function refreshStatus() {
-  const res = await run(IPCTL + " status");
-  document.getElementById("status-out").innerHTML = colorizeStatus(res.stdout || res.stderr || "(no response)");
-}
-
-async function refreshSets() {
-  const res = await run(IPCTL + " list");
-  const container = document.getElementById("set-list");
-  container.innerHTML = "";
-  const lines = (res.stdout || "").split("\n").filter(l => l.trim() && !l.startsWith("("));
-
-  // keep the Config section's set selector in sync with the current set list
-  const configSelect = document.getElementById("config-set-select");
-  const prevValue = configSelect.value;
-  configSelect.innerHTML = '<option value="">none</option>';
-  lines.forEach(line => {
-    const name = line.trim().split(/\s+/)[0];
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    configSelect.appendChild(opt);
-  });
-  if (lines.some(l => l.trim().split(/\s+/)[0] === prevValue)) {
-    configSelect.value = prevValue;
-  } else if (configSet && !lines.some(l => l.trim().split(/\s+/)[0] === configSet)) {
-    configSet = null; // the previously configured set no longer exists
+async function run(base, args, timeoutMs) {
+  const fg = !BG_CMD.test(args);
+  let btn = null;
+  if (fg) {
+    if (_pressed && Date.now() - _pressedAt < 60000 && document.body.contains(_pressed)) btn = _pressed;
+    _pressed = null;
+    if (btn) btn.classList.add('working');
+    if (++_busyN === 1) $('busy-bar').classList.add('on');
   }
+  try {
+    return await sh(base + ' ' + args, timeoutMs);
+  } finally {
+    if (fg) {
+      if (btn) btn.classList.remove('working');
+      if (--_busyN <= 0) { _busyN = 0; $('busy-bar').classList.remove('on'); }
+    }
+  }
+}
+const ctl = (args, t) => run(CTL, args, t);
+const ipctl = (args, t) => run(IPCTL, args, t);
 
-  if (lines.length === 0) {
-    container.innerHTML = '<div class="muted" style="margin-top:10px;">No sets created yet.</div>';
+function parseKV(text) {
+  const out = {};
+  (text || '').split('\n').forEach(line => {
+    const i = line.indexOf('=');
+    if (i > 0 && !out.hasOwnProperty(line.slice(0, i).trim())) out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  });
+  return out;
+}
+
+// Split "key=value lines / @@MARK@@ / payload" responses.
+function splitMarker(text, mark) {
+  const i = text.indexOf(mark);
+  if (i < 0) return [text, ''];
+  return [text.slice(0, i), text.slice(i + mark.length).replace(/^\n/, '')];
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═════════════════════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
+const fmtN = n => num(n).toLocaleString('en-US');
+
+function fmtDur(sec) {
+  sec = num(sec);
+  if (sec < 1) return '—';
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600),
+        m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+function ago(epoch) {
+  const e = num(epoch);
+  if (!e) return '';
+  const s = Math.floor(Date.now() / 1000) - e;
+  if (s < 60) return 'just now';
+  return fmtDur(s) + ' ago';
+}
+const mmss = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+
+let _toastTimer = null;
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.className = 'toast'; }, 2800);
+}
+
+// Result of a changing ctl command: toast its error, return the parsed keys.
+function okOrToast(text, okMsg) {
+  const r = parseKV(text);
+  if (r.ok === '1') { if (okMsg) toast(okMsg, 'ok'); return r; }
+  toast(r.error || (text.trim().split('\n').pop() || 'Failed'), 'err');
+  return null;
+}
+
+setInterval(() => { $('clock').textContent = new Date().toTimeString().slice(0, 8); }, 1000);
+
+function rowCtl(name, detail, ctrl) {
+  return `<div class="row ctl"><div class="rn"><b>${name}</b>${detail ? `<span>${detail}</span>` : ''}</div>${ctrl}</div>`;
+}
+function row(name, detail, pill, pillText) {
+  return `<div class="row"><div class="rn"><b>${name}</b>${detail ? `<span>${detail}</span>` : ''}</div>
+    <span class="pill ${pill}">${esc(pillText)}</span></div>`;
+}
+function sw(id, on, onchange) {
+  return `<label class="sw" id="${id}"><input type="checkbox" ${on ? 'checked' : ''} onchange="${onchange}"><i></i></label>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Tabs
+// ═════════════════════════════════════════════════════════════════════════
+let currentTab = 'dash';
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  if (name === 'lists') loadSources();
+  if (name === 'tools') { loadList('block'); loadList('allow'); if ($('adv').open) loadAdvanced(); }
+  if (name === 'sys') loadStatus();
+  if (name === 'log') loadLog(true);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Dashboard
+// ═════════════════════════════════════════════════════════════════════════
+let M = {};                 // last poll
+let _pauseLeft = 0, _pauseAt = 0;
+let _updRunning = false;
+const pauseRemaining = () => Math.max(0, _pauseLeft - Math.floor((Date.now() - _pauseAt) / 1000));
+
+function setBanner(cls, msg) {
+  const b = $('banner');
+  b.className = cls;
+  b.innerHTML = '<span class="live-dot"></span>' + msg;
+}
+
+// "error:unable to initialize table 'filter'" -> readable reason
+const famReason = v => (v || '').replace(/^error:/, '');
+function famLabel(v) {
+  switch (v) {
+    case 'ok': return ['ok', 'Active'];
+    case 'ok-drop': return ['ok', 'Active (drop)'];
+    case 'off': return ['skip', 'Off'];
+    case 'unavailable': return ['skip', 'Not available'];
+    default: return v && v.indexOf('error') === 0 ? ['bad', 'Failed'] : ['skip', '—'];
+  }
+}
+
+function renderBanner(m) {
+  if (_updRunning) { setBanner('b-warn', '⚙ Updating lists…'); return; }
+  const st = m.state;
+  if (st === 'disabled') { setBanner('b-warn', 'Switched off — nothing is blocked'); return; }
+  if (pauseRemaining() > 0) { setBanner('b-warn', `Paused — protection resumes in ${mmss(pauseRemaining())}`); return; }
+  if (st === 'error') { setBanner('b-error', 'Not blocking — the IPv4 firewall rules failed (see System)'); return; }
+  if (m.lists_empty === '1') { setBanner('b-warn', 'No blocklists downloaded yet — open Lists and tap Update'); return; }
+  if (st === 'partial') { setBanner('b-warn', 'Protected on IPv4 only — IPv6 is not filtered'); return; }
+  if (st === 'protected') {
+    const fams = (m.ipv6 === 'ok' || m.ipv6 === 'ok-drop') ? 'IPv4 and IPv6' : 'IPv4';
+    setBanner('', `Protected on ${fams} — ${fmtN(num(m.entries4) + num(m.entries6))} networks blocked`);
     return;
   }
-  lines.forEach(line => {
-    const parts = line.trim().split(/\s+/);
-    const name = parts[0];
-    const type = (parts.find(p => p.startsWith("type=")) || "type=?").split("=")[1];
-    const entries = (parts.find(p => p.startsWith("entries=")) || "entries=0").split("=")[1];
-    const isFeed = name.startsWith("feed_");
-    const tile = document.createElement("div");
-    tile.className = "set-tile" + (name === selectedSet ? " selected" : "");
-    tile.innerHTML =
-      '<div><div class="set-tile-name">' + name + (isFeed ? ' <span class="chip" style="background:rgba(255,159,67,0.1);border-color:rgba(255,159,67,0.3);color:var(--accent3);">FEED</span>' : '') + '</div><div class="set-tile-meta">' + type + '</div></div>' +
-      '<span class="chip">' + formatCount(entries) + ' entries</span>';
-    tile.onclick = () => selectSet(name);
-    container.appendChild(tile);
-  });
+  setBanner('b-warn', 'Waiting for the watchdog…');
 }
 
-function safeName(v) { return /^[a-zA-Z0-9_]{1,31}$/.test(v); }
-function safeAddr(v) { return /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(v); }
+function renderDashboard(m) {
+  $('hdr-ver').textContent = m.version || '';
+  $('s-net').textContent = fmtN(num(m.entries4) + num(m.entries6));
+  $('s-out').textContent = fmtN(m.blocked_out);
+  $('s-in').textContent = fmtN(m.blocked_in);
+  $('s-lists').textContent = `${num(m.sources_loaded)}/${num(m.sources_enabled)}`;
+
+  const [p4, t4] = famLabel(m.ipv4), [p6, t6] = famLabel(m.ipv6);
+  const stTxt = { protected: ['ok', 'Protected'], partial: ['warn', 'Partly'], paused: ['warn', 'Paused'],
+                  disabled: ['skip', 'Off'], error: ['bad', 'Not blocking'] }[m.state] || ['skip', m.state || '—'];
+  const wd = m.watchdog === 'running';
+  let h = '';
+  h += row('State', '', stTxt[0], stTxt[1]);
+  h += row('IPv4', m.ipv4 && m.ipv4.indexOf('error') === 0 ? esc(famReason(m.ipv4)) : `${fmtN(m.entries4)} networks`, p4, t4);
+  h += row('IPv6', m.ipv6 && m.ipv6.indexOf('error') === 0 ? esc(famReason(m.ipv6)) : `${fmtN(m.entries6)} networks`, p6, t6);
+  h += row('Watchdog', wd ? `checks every 10 s · repairs ${num(m.repairs)}` : 'not running — reboot, or check the log', wd ? 'ok' : 'bad', wd ? 'Running' : 'Stopped');
+  h += `<div class="row set-row" onclick="showTab('tools')"><div class="rn"><b>Your lists</b><span>${fmtN(m.block_entries)} blocked · ${fmtN(m.allow_entries)} allowed</span></div><span class="pill skip">Edit</span></div>`;
+  const au = autoInfo(m);
+  h += row('Automatic update', au.text, au.pill, au.pillText).replace('<span>', '<span class="wrap">');
+  $('ov-body').innerHTML = h;
+
+  $('ov-empty').innerHTML = m.lists_empty === '1'
+    ? `<div class="callout">No blocklist has been downloaded yet, so nothing is being blocked. Choose your lists and tap Update.<br>
+       <button class="btn-s a" onclick="showTab('lists')">Open Lists</button></div>` : '';
+
+  $('master-row').innerHTML = rowCtl('Protection', m.enabled === '1'
+      ? 'On — the firewall rules are active' : 'Off — the module blocks nothing until you switch it back on',
+    sw('sw-master', m.enabled === '1', 'toggleMaster(this.checked)'));
+
+  _pauseLeft = num(m.paused_left); _pauseAt = Date.now();
+  renderPause();
+
+  $('d-out').textContent = fmtN(m.blocked_out);
+  $('d-in').textContent = fmtN(m.blocked_in);
+  $('d-fwd').textContent = fmtN(m.blocked_fwd);
+  $('d-adv').textContent = fmtN(m.adv_hits);
+  $('since-note').textContent = m.applied_ago ? fmtDur(m.applied_ago) + ' ago' : '';
+
+  $('lists-dot').className = 'tab-dot' + (num(m.last_update_fail) ? ' bad' : (m.lists_empty === '1' ? ' warn' : ''));
+  if (currentTab === 'lists') renderAuto();
+  $('sys-dot').className = 'tab-dot' + (m.state === 'error' || !wd ? ' bad' : (m.state === 'partial' ? ' warn' : ''));
+  renderBanner(m);
+}
+
+// "16:58", "tomorrow 16:58", "Mon 16:58" - in the phone's own time.
+function whenClock(epoch) {
+  const d = new Date(num(epoch) * 1000), now = new Date();
+  const hm = d.toTimeString().slice(0, 5);
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dd = Math.round((day(d) - day(now)) / 86400000);
+  if (dd === 0) return hm;
+  if (dd === 1) return 'tomorrow ' + hm;
+  if (dd === -1) return 'yesterday ' + hm;
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + hm;
+}
+
+// Next and last automatic update, for the Dashboard row and the Lists note.
+function autoInfo(m) {
+  const lines = [];
+  const now = num(m.now) || Math.floor(Date.now() / 1000);
+  if (m.auto_update !== 'off') {
+    if (m.update_running === '1') lines.push('updating now…');
+    else if (!num(m.auto_next)) lines.push(`${m.auto_update} · next: once the phone's clock is set`);
+    else if (num(m.auto_next) - now <= 60) lines.push(`${m.auto_update} · next: now (within a minute)`);
+    else lines.push(`${m.auto_update} · next ≈ ${whenClock(m.auto_next)} (in ${fmtDur(num(m.auto_next) - now)})`);
+  } else lines.push('off · lists change only when you tap Update');
+  const lw = num(m.last_update_wall), lok = num(m.last_update_ok), lf = num(m.last_update_fail);
+  if (m.last_update_mode) {
+    const when = lw ? whenClock(lw) : 'at boot';
+    const how = m.last_update_mode === 'auto' ? 'automatic' : 'manual';
+    if (lf && !lok) lines.push(`<span class="c-r">last (${how}, ${esc(when)}): failed — the previous copies are in use</span>`);
+    else if (lf) lines.push(`<span class="c-a">last (${how}, ${esc(when)}): ${lok} ok, failed: ${esc((m.last_update_failed || '').split(',').map(srcName).join(', '))}</span>`);
+    else lines.push(`last (${how}, ${esc(when)}): ${lok} list${lok === 1 ? '' : 's'} updated`);
+  }
+  let pill = m.auto_update === 'off' ? 'skip' : 'ok', pillText = m.auto_update === 'off' ? 'Off' : m.auto_update;
+  if (lf) { pill = lok ? 'warn' : 'bad'; pillText = lok ? 'Partly' : 'Failed'; }
+  return { text: lines.join('<br>'), pill, pillText };
+}
+
+function renderPause() {
+  const left = pauseRemaining();
+  $('pause-state').innerHTML = left > 0
+    ? `<span class="c-a">Paused — ${mmss(left)} left</span>` : 'Pausing switches the rules off for a while and back on by itself. A reboot also ends a pause.';
+  $('resume-btn').disabled = left <= 0;
+}
+setInterval(() => { if (pauseRemaining() > 0 || _pauseLeft > 0) { renderPause(); renderBanner(M); } }, 1000);
+
+let _pollBusy = false;
+async function poll() {
+  if (_pollBusy) return;
+  _pollBusy = true;
+  try {
+    const t = await ctl('poll', 15000);
+    M = parseKV(t);
+    if (!M.state) throw new Error(t.trim().split('\n').pop() || 'no answer');
+    if (M.update_running === '1' && !_updRunning) attachUpdate();
+    renderDashboard(M);
+    $('last-refresh').textContent = new Date().toTimeString().slice(0, 8);
+  } catch (e) {
+    setBanner('b-error', 'No answer from the module: ' + esc(e.message || e));
+  } finally { _pollBusy = false; }
+}
+
+async function toggleMaster(on) {
+  $('sw-master').classList.add('busy');
+  const r = okOrToast(await ctl(on ? 'enable' : 'disable'), on ? 'Protection on' : 'Protection off');
+  $('sw-master').classList.remove('busy');
+  if (!r) { poll(); return; }
+  poll();
+}
+async function pauseFor(min) {
+  if (okOrToast(await ctl('pause ' + min), `Paused for ${min >= 60 ? min / 60 + ' h' : min + ' min'}`)) poll();
+}
+async function resumeNow() {
+  if (okOrToast(await ctl('resume'), 'Resumed')) poll();
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Lists: sources, update, automatic update
+// ═════════════════════════════════════════════════════════════════════════
+let SRC = [], SRC_SAVED = '', _auto = 'off';
+
+function parseSources(text) {
+  const [head, body] = splitMarker(text, '@@SOURCES@@');
+  const kv = parseKV(head);
+  const rows = body.split('\n').filter(l => l && l.indexOf('id|') !== 0).map(l => {
+    const f = l.split('|');
+    return { id: f[0], fam: f[1], group: f[2], label: f[3], on: f[4] === '1', loaded: num(f[5]),
+             cached: num(f[6]), updated: num(f[7]), status: f[8] || '', error: f[9] || '', dir: f[10] || 'both', desc: f.slice(11).join('|') };
+  });
+  return { kv, rows };
+}
+
+async function loadSources() {
+  try {
+    const { kv, rows } = parseSources(await ctl('sources'));
+    if (!rows.length) throw new Error(kv.error || 'no catalog');
+    SRC = rows;
+    SRC_SAVED = SRC.filter(s => s.on).map(s => s.id).join(',');
+    _auto = kv.auto_update || 'off';
+    renderSources(); renderAuto();
+  } catch (e) {
+    $('src-body').innerHTML = `<div class="empty c-r">Could not read the list catalog: ${esc(e.message || e)}</div>`;
+  }
+}
+
+function srcMeta(s) {
+  if (s.status === 'fail' && s.cached) return `<span class="fail">Last download failed: ${esc(s.error)} — using the copy from ${esc(ago(s.updated) || 'earlier')}</span>`;
+  if (s.status === 'fail') return `<span class="fail">Download failed: ${esc(s.error)}</span>`;
+  if (!s.cached) return `<span>Not downloaded yet</span>`;
+  const when = s.updated ? `updated ${ago(s.updated)}` : 'date unknown';
+  const inK = s.on ? (s.loaded ? `${fmtN(s.loaded)} networks active` : 'not loaded yet') : `${fmtN(s.cached)} networks, not active`;
+  return `<span class="ok">${inK} · ${when}</span>`;
+}
+
+function renderSources() {
+  let h = '', grp = '';
+  SRC.forEach(s => {
+    if (s.group !== grp) { grp = s.group; h += `<div class="src-group">${esc(grp)}</div>`; }
+    const J = esc(JSON.stringify(s.id));
+    h += `<div class="src-row"><div class="si" style="display:flex;flex-direction:column">
+      <label class="pick"><input type="checkbox" data-id="${esc(s.id)}" ${s.on ? 'checked' : ''} onchange="onSrcToggle(this)">
+      <div class="si"><b>${esc(s.group)} ${esc(s.label)}</b>
+        <div class="badges"><span class="bdg ${s.fam === '6' ? 'b' : 'g'}">IPv${esc(s.fam)}</span></div>
+        <span class="desc">${esc(s.desc)}</span>${srcMeta(s)}</div></label>
+      <div class="src-ctl">${dirSeg('dir-' + s.id, s.id, s.dir)}
+        <button class="btn-s b" onclick="openSource(${J})" ${s.cached ? '' : 'disabled'}>View</button></div>
+      </div></div>`;
+  });
+  $('src-body').innerHTML = h;
+  const on = SRC.filter(s => s.on).length;
+  $('src-note').textContent = `${on} selected`;
+  onSrcToggle();
+}
+
+function selectedIds() {
+  return Array.from(document.querySelectorAll('#src-body input[type=checkbox]')).filter(i => i.checked).map(i => i.dataset.id);
+}
+
+function onSrcToggle() {
+  const sel = selectedIds();
+  const changed = sel.join(',') !== SRC_SAVED;
+  $('src-save').disabled = !changed || _updRunning;
+  let hint = '';
+  if (sel.indexOf('firehol-level4') >= 0 && SRC_SAVED.indexOf('firehol-level4') < 0) hint = 'Level 4 is very large and blocks some legitimate sites. ';
+  if (!sel.length) hint += 'With no list selected only your own blocklist is used.';
+  else if (changed) hint += 'Lists not downloaded yet are fetched when you save.';
+  $('src-hint').textContent = hint;
+}
+
+// Direction selector: which traffic a list blocks.
+const DIR_TXT = { out: 'Outgoing', in: 'Incoming', both: 'Both' };
+function dirSeg(elId, id, cur) {
+  const J = esc(JSON.stringify(id));
+  return `<div class="seg mini" id="${esc(elId)}">` + ['out', 'in', 'both'].map(v =>
+    `<button data-v="${v}" class="${v === cur ? 'on' : ''}" onclick="setDir(${J}, '${v}', this)">${DIR_TXT[v]}</button>`).join('') + '</div>';
+}
+async function setDir(id, v, btn) {
+  const seg = btn.closest('.seg');
+  if (btn.classList.contains('on')) return;
+  seg.classList.add('busy');
+  const r = okOrToast(await ctl(`sources dir ${q(id)} ${v}`),
+    `${id === 'user' ? 'Your blocklist' : srcName(id)} now blocks ${v === 'both' ? 'both directions' : DIR_TXT[v].toLowerCase() + ' traffic'}`);
+  seg.classList.remove('busy');
+  if (r) seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === r.dir));
+  const s = SRC.find(x => x.id === id); if (s && r) s.dir = r.dir;
+}
+
+async function saveSources() {
+  const sel = selectedIds();
+  const r = okOrToast(await ctl('sources set ' + q(sel.length ? sel.join(',') : 'none')), 'Selection saved');
+  if (!r) return;
+  if (r.downloading) { toast('Downloading: ' + r.downloading, 'ok'); attachUpdate(); }
+  await loadSources();
+  poll();
+}
+
+function renderAuto() {
+  document.querySelectorAll('#auto-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === _auto));
+  const base = _auto === 'off'
+    ? 'Off: the lists change only when you tap <b>Update lists</b>. Nothing is downloaded on its own.'
+    : `Each selected list is refreshed <b>${_auto === 'daily' ? 'a day' : 'a week'} after its last download</b>, in the background (checked every minute, from 2 minutes after boot). A failed download keeps the last good copy and is retried an hour later.`;
+  const info = M && M.state ? autoInfo(Object.assign({}, M, { auto_update: _auto })) : null;
+  $('auto-note').innerHTML = base + (info ? `<div class="kv-block mt8">${info.text.replace(/^off · lists change only when you tap Update(<br>)?/, '')}</div>` : '');
+}
+async function setAuto(v) {
+  if (v === _auto) return;
+  if (okOrToast(await ctl('set AUTO_UPDATE ' + v), v === 'off' ? 'Automatic update off' : `Automatic update: ${v}`)) { _auto = v; await poll(); renderAuto(); }
+}
+
+// ── Update ──
+let _updTimer = null;
+function setUpdStatus(msg, color) { const e = $('upd-status'); e.textContent = msg; e.style.color = color || 'var(--muted)'; }
+function setUpdRunningUI(running) {
+  const b = $('upd-btn');
+  b.disabled = running;
+  b.classList.toggle('running', running);
+  b.textContent = running ? 'Updating…' : 'Update lists';
+  $('src-save').disabled = running || selectedIds().join(',') === SRC_SAVED;
+}
+function colorLog(t) {
+  return esc(t).split('\n').map(l => {
+    if (/FAILED|could not|busy/.test(l)) return `<span class="log-err">${l}</span>`;
+    if (/: ok -|loaded|done: \d+ ok, 0 failed/.test(l)) return `<span class="log-ok">${l}</span>`;
+    return `<span class="log-info">${l}</span>`;
+  }).join('\n');
+}
+function attachUpdate() {
+  _updRunning = true;
+  setUpdRunningUI(true);
+  setUpdStatus('Downloading…', 'var(--amber)');
+  renderBanner(M);
+  clearInterval(_updTimer);
+  _updTimer = setInterval(pollUpdate, 2000);
+  pollUpdate();
+}
+async function pollUpdate() {
+  try {
+    const t = await ctl('update-status');
+    const [head, log] = splitMarker(t, '@@LOG@@');
+    const st = parseKV(head);
+    if (log.trim()) { const box = $('upd-log'); box.innerHTML = colorLog(log.trim()); box.scrollTop = box.scrollHeight; }
+    if (st.running !== '1') finishUpdate(st);
+  } catch (e) { /* transient, keep polling */ }
+}
+function finishUpdate(st) {
+  clearInterval(_updTimer); _updTimer = null;
+  _updRunning = false;
+  setUpdRunningUI(false);
+  const ok = num(st.ok_count), bad = num(st.fail_count);
+  if (bad && !ok) setUpdStatus('✗ Update failed — the lists you had are still in use', 'var(--red)');
+  else if (bad) setUpdStatus(`⚠ ${ok} updated, ${bad} failed — see below`, 'var(--amber)');
+  else if (ok) setUpdStatus(`✓ ${ok} list${ok > 1 ? 's' : ''} updated`, 'var(--green)');
+  else setUpdStatus('Tap Update to download the selected lists');
+  setTimeout(() => { poll(); if (currentTab === 'lists') loadSources(); }, 600);
+}
+async function startUpdate() {
+  if (_updRunning) return;
+  const r = okOrToast(await ctl('update'));
+  if (!r) return;
+  $('upd-log').innerHTML = '<span class="log-info">Starting…</span>';
+  attachUpdate();
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Tools: check, own lists
+// ═════════════════════════════════════════════════════════════════════════
+const srcName = id => { const s = SRC.find(x => x.id === id); return s ? `${s.group} ${s.label}` : (id === 'blocklist' ? 'your blocklist' : id); };
+
+async function checkIp(ipArg) {
+  const ip = (ipArg || $('chk-in').value).trim();
+  if (!ip) return;
+  $('chk-in').value = ip;
+  $('probe-out').innerHTML = '';
+  if (!SRC.length) await loadSources();
+  const r = parseKV(await ctl('check ' + q(ip)));
+  if (r.ok !== '1') { $('chk-out').innerHTML = `<div class="verdict r">${esc(r.error || 'Check failed')}</div>`; return; }
+  const names = v => (v || '').split(',').filter(Boolean).map(srcName).map(esc).join(', ');
+  const listed = names(r.listed_in);
+  let v, cls, why;
+  switch (r.verdict) {
+    case 'blocked': v = 'Blocked'; cls = 'r'; why = `Both directions. Listed in ${listed}.`; break;
+    case 'blocked_out': v = 'Blocked outgoing'; cls = 'r'; why = `Connections from this phone to it are blocked; incoming traffic from it is not. Outgoing: ${names(r.blocked_by)}.`; break;
+    case 'blocked_in': v = 'Blocked incoming'; cls = 'a'; why = `Connections it starts towards this phone are dropped. Connections this phone opens to it still work (their replies are let through). Incoming: ${names(r.blocked_in_by)}.`; break;
+    case 'allowed_allowlist': v = 'Allowed'; cls = 'g'; why = 'It is on your allowlist' + (listed ? `, which wins over ${listed}.` : '.'); break;
+    case 'allowed_dnscrypt': v = 'Never blocked'; cls = 'g'; why = 'dnscrypt-proxy uses this address (a resolver or its bootstrap). It is kept reachable so this phone never loses DNS' + (listed ? `, even though ${listed} lists it.` : '.'); break;
+    case 'allowed_special_range': v = 'Never blocked'; cls = 'g'; why = 'A local or special-purpose address (LAN, loopback, carrier NAT, multicast…). The lists never block these.'; break;
+    default: v = 'Not listed'; cls = 'm'; why = 'None of the active lists contains this address; its traffic passes.';
+  }
+  let h = `<div class="verdict ${cls}">${v}</div><div class="kv-block">${why}`;
+  if (r.in_advanced_sets) h += `<br><span class="c-a">Also in your advanced sets: ${esc(r.in_advanced_sets)}. Your own rules run first and may decide differently.</span>`;
+  if (r.note) h += `<br><span class="c-a">Note: protection is ${esc(r.note.replace(/^enforcement is currently /, ''))} right now.</span>`;
+  h += '</div><div class="btn-row2">';
+  const J = esc(JSON.stringify(ip));
+  if (/^blocked/.test(r.verdict)) h += `<button class="btn-s" onclick="quickList('allow', ${J})">Allow it</button>`;
+  if (r.verdict === 'allowed_allowlist') h += `<button class="btn-s a" onclick="quickDel('allow', ${J})">Remove from allowlist</button>`;
+  if (r.verdict === 'allowed_dnscrypt') h += '';
+  if (r.verdict === 'not_listed') h += `<button class="btn-s r" onclick="quickList('block', ${J})">Block it</button>`;
+  if (r.in_blocklist === '1') h += `<button class="btn-s a" onclick="quickDel('block', ${J})">Remove from your blocklist</button>`;
+  h += '</div>';
+  $('chk-out').innerHTML = h;
+}
+// A real connection from the phone, like curl in a terminal.
+async function testConn() {
+  const ip = $('chk-in').value.trim();
+  const port = $('chk-port').value.trim() || '443';
+  if (!ip) { toast('Type an address first', 'err'); return; }
+  $('probe-out').innerHTML = '<div class="kv-block c-m">Connecting…</div>';
+  const r = parseKV(await ctl(`probe ${q(ip)} ${q(port)}`, 20000));
+  if (r.ok !== '1') { $('probe-out').innerHTML = `<div class="verdict r">${esc(r.error || 'Test failed')}</div>`; return; }
+  const ms = num(r.ms), secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
+  const mod = r.blocked_by_module === '1', viaIn = num(r.module_hits_in) > 0 && !num(r.module_hits_out);
+  let v, cls, why;
+  if (r.result === 'connected') { v = 'Connected'; cls = 'g'; why = `A connection to ${esc(ip)} port ${esc(port)} got through in ${ms} ms.`; }
+  else if (mod && r.result === 'refused') { v = 'Stopped by this module'; cls = 'r'; why = `Refused at once (${ms} ms) by the outgoing rule — the app gets an immediate error.`; }
+  else if (mod) { v = 'Stopped by this module'; cls = 'r'; why = viaIn ? `No answer after ${secs} s: the reply was dropped by an incoming rule.` : `No answer after ${secs} s: dropped silently by the outgoing rule.`; }
+  else if (r.result === 'refused') { v = 'Refused elsewhere'; cls = 'a'; why = `Refused in ${ms} ms, but not by this module — most likely nothing listens on port ${esc(port)} there.`; }
+  else { v = 'No answer'; cls = 'a'; why = `Nothing came back within ${secs} s, and this module did not stop it — the host may be down, the port filtered, or there is no route.`; }
+  let h = `<div class="verdict ${cls}">${v}</div><div class="kv-block">${why}`;
+  if (r.state !== 'protected' && r.state !== 'partial') h += `<br><span class="c-a">Protection is ${esc(r.state)} right now.</span>`;
+  h += '<br><span class="c-m">The test runs as root: rules limited to one app do not apply to it.</span></div>';
+  $('probe-out').innerHTML = h;
+}
+
+async function quickList(which, ip) {
+  const r = okOrToast(await ctl(`${which} add ${q(ip)}`), which === 'allow' ? 'Added to your allowlist' : 'Added to your blocklist');
+  if (r) { checkIp(ip); poll(); if (currentTab === 'tools') loadList(which); }
+}
+
+async function quickDel(which, ip) {
+  const r = okOrToast(await ctl(`${which} del ${q(ip)}`));
+  if (!r) return;
+  toast(num(r.removed) ? 'Removed' : 'Not an exact entry of the list (it may be covered by a wider network)', num(r.removed) ? 'ok' : 'err');
+  checkIp(ip); poll(); if (currentTab === 'tools') loadList(which);
+}
+
+async function loadList(which) {
+  const pre = which === 'allow' ? 'al' : 'bl';
+  try {
+    const [head, body] = splitMarker(await ctl(which + ' list'), '@@LIST@@');
+    const kv = parseKV(head);
+    const items = body.split('\n').map(s => s.trim()).filter(Boolean);
+    if (which === 'block' && kv.dir) document.querySelectorAll('#dir-user button').forEach(b => b.classList.toggle('on', b.dataset.v === kv.dir));
+    $(pre + '-note').textContent = `${items.length} entr${items.length === 1 ? 'y' : 'ies'}`;
+    $(pre + '-list').innerHTML = items.length
+      ? items.map(e => `<div class="rule-row"><span class="ipl">${esc(e)}</span><button onclick="listDel('${which}', ${esc(JSON.stringify(e))})" aria-label="Remove ${esc(e)}">✕</button></div>`).join('')
+      : `<div class="empty">${which === 'allow' ? 'Nothing on your allowlist.' : 'Nothing on your blocklist.'}</div>`;
+    if (kv.ok !== '1') throw new Error(kv.error || 'read failed');
+  } catch (e) {
+    $(pre + '-list').innerHTML = `<div class="empty c-r">${esc(e.message || e)}</div>`;
+  }
+}
+async function listAdd(which) {
+  const inp = $(which === 'allow' ? 'al-in' : 'bl-in');
+  const vals = inp.value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  if (!vals.length) return;
+  const r = okOrToast(await ctl(`${which} add ${vals.map(q).join(' ')}`));
+  if (!r) return;
+  toast(num(r.added) ? `Added ${r.added}` + (num(r.already_listed) ? `, ${r.already_listed} already listed` : '') : 'Already listed', 'ok');
+  inp.value = '';
+  loadList(which); poll();
+}
+async function listDel(which, e) {
+  if (okOrToast(await ctl(`${which} del ${q(e)}`), 'Removed')) { loadList(which); poll(); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Tools: advanced sets and rules (ipctl.sh)
+// ═════════════════════════════════════════════════════════════════════════
+const SET_TYPES = ['hash:net', 'hash:ip', 'hash:ip,port', 'hash:net,port', 'hash:net,iface', 'hash:net,net',
+  'hash:ip,port,ip', 'hash:ip,port,net', 'hash:net,port,net', 'hash:ip,mark', 'hash:mac', 'hash:ip,mac',
+  'bitmap:ip', 'bitmap:ip,mac', 'bitmap:port', 'list:set'];
+let ADV_SETS = [], APPS = null;
+
+function ipOk(text) {
+  const t = (text || '').trim();
+  if (/^OK:/m.test(t)) return true;
+  toast((t.match(/ERROR: (.*)/) || [null, t.split('\n').pop() || 'Failed'])[1], 'err');
+  return false;
+}
+
+async function loadAdvanced() {
+  if (!$('ns-type').options.length) $('ns-type').innerHTML = SET_TYPES.map(t => `<option>${t}</option>`).join('');
+  const [sets, rules] = await Promise.all([ipctl('list'), ipctl('rules')]);
+  ADV_SETS = sets.split('\n').map(l => l.match(/^(\S+)\s+type=(\S+)\s+entries=(\d*)/)).filter(Boolean)
+    .map(m => ({ name: m[1], type: m[2], n: num(m[3]) }));
+  $('adv-sets-n').textContent = ADV_SETS.length ? `${ADV_SETS.length}` : '';
+  $('adv-sets').innerHTML = ADV_SETS.length ? ADV_SETS.map(s =>
+    `<div class="rule-row set-row" onclick="openSet(${esc(JSON.stringify(s.name))})"><span>${esc(s.name)}</span><span class="pat">${esc(s.type)}</span><span class="pat">${fmtN(s.n)}</span></div>`).join('')
+    : '<div class="empty">No sets yet.</div>';
+  $('nr-set').innerHTML = ADV_SETS.map(s => `<option>${esc(s.name)}</option>`).join('') || '<option value="">(create a set first)</option>';
+
+  const rl = rules.split('\n').filter(l => /^[A-Z]+\|/.test(l));
+  $('adv-rules-n').textContent = rl.length ? `${rl.length}` : '';
+  const chainTxt = { OUTPUT: 'out', INPUT: 'in', FORWARD: 'hotspot' };
+  $('adv-rules').innerHTML = rl.length ? rl.map(l => {
+    const f = l.split('|');
+    const app = f[4] ? ` · app ${f[4]}` : '';
+    return `<div class="rule-row"><span class="pat">${esc(chainTxt[f[0]] || f[0])}</span><span>${esc(f[1])} ${esc(f[2])} → ${esc(f[3])}${esc(app)}</span><button onclick="delRule(${esc(JSON.stringify(f))})" aria-label="Remove rule">✕</button></div>`;
+  }).join('') : '<div class="empty">No rules yet.</div>';
+}
 
 async function createSet() {
-  const name = document.getElementById("new-set-name").value.trim();
-  const type = document.getElementById("new-set-type").value;
-  const family = document.getElementById("new-set-family").value;
-  if (!safeName(name)) { await customAlert("Invalid name (letters/digits/underscore only, max 31 chars)"); return; }
-  // bitmap:* and hash:mac have no address family — ipctl.sh rejects a
-  // family argument for those outright, so don't send one.
-  const familyless = type.startsWith("bitmap:") || type === "hash:mac";
-  if (family && familyless) {
-    await customAlert(type + " has no address family. Create it as IPv4 (default).");
-    return;
-  }
-  let cmd = IPCTL + " create " + name + " " + type;
-  if (family && !familyless) cmd += " " + family;
-  await run(cmd);
-  document.getElementById("new-set-name").value = "";
-  await refreshSets();
-}
-
-// selectSet: tile click, toggles the member-editing view only. Also
-// syncs the Config section's set selector for convenience, but Config
-// tracks its own independent `configSet` so picking a different set
-// there never disturbs whichever member view happens to be open.
-// Keep the family selector honest: disable it for types that have no
-// address family, so the invalid combination is not offered at all.
-function syncFamilySelector() {
-  const type = document.getElementById("new-set-type").value;
-  const fam = document.getElementById("new-set-family");
-  const familyless = type.startsWith("bitmap:") || type === "hash:mac";
-  fam.disabled = familyless;
-  if (familyless) fam.value = "";
-  fam.style.opacity = familyless ? "0.45" : "1";
-  const lbl = document.getElementById("new-set-family-label");
-  if (lbl) {
-    lbl.style.opacity = familyless ? "0.45" : "1";
-    lbl.textContent = familyless ? "Address family (n/a)" : "Address family";
+  const name = $('ns-name').value.trim();
+  if (!/^[A-Za-z0-9_]{1,31}$/.test(name)) { toast('Name: letters, digits, underscore, up to 31', 'err'); return; }
+  const fam = $('ns-fam').value;
+  if (ipOk(await ipctl(`create ${q(name)} ${q($('ns-type').value)}${fam ? ' ' + q(fam) : ''}`))) {
+    toast('Set created', 'ok'); $('ns-name').value = ''; loadAdvanced();
   }
 }
 
-async function selectSet(name) {
-  if (selectedSet === name) {
-    selectedSet = null;
-    document.getElementById("detail").style.display = "none";
-    await refreshSets();
-    return;
-  }
-  selectedSet = name;
-  document.getElementById("detail").style.display = "block";
-  document.getElementById("detail-title").textContent = "Set: " + name;
-  await refreshSets();
-  await refreshMembers();
+let SEL_APP = null;   // {pkg, uid}
+function appSearch(text) {
+  const box = $('nr-app-res');
+  const t = text.trim().toLowerCase();
+  if (!t || !APPS) { box.classList.remove('show'); box.innerHTML = ''; return; }
+  const hits = APPS.filter(a => a[0].toLowerCase().indexOf(t) >= 0).slice(0, 12);
+  box.innerHTML = hits.length
+    ? hits.map(a => `<div class="app-row" onclick="pickApp(${esc(JSON.stringify(a[0]))}, ${esc(JSON.stringify(a[1]))})">${esc(a[0])}<span class="uid">uid ${esc(a[1])}</span></div>`).join('')
+    : `<div class="app-row" style="cursor:default;color:var(--muted)">No installed app matches “${esc(text.trim())}”</div>`;
+  box.classList.add('show');
+}
+function pickApp(pkg, uid) {
+  SEL_APP = { pkg, uid };
+  $('nr-app-q').value = '';
+  $('nr-app-res').classList.remove('show');
+  $('nr-app-lbl').textContent = `${pkg} (uid ${uid})`;
+  $('nr-app-chip').classList.add('show');
+  $('nr-chain').value = 'OUTPUT';
+}
+function clearApp() { SEL_APP = null; $('nr-app-chip').classList.remove('show'); }
 
-  document.getElementById("config-set-select").value = name;
-  if (configSet !== name) slotAssignment = [null, null, null];
-  configSet = name;
-  await refreshConfigPanel();
+async function addRule() {
+  const set = $('nr-set').value;
+  if (!set) { toast('Create a set first', 'err'); return; }
+  const chain = $('nr-chain').value, app = SEL_APP ? SEL_APP.uid : '';
+  if (app && chain !== 'OUTPUT') { toast('A rule for one app works only on outgoing traffic', 'err'); return; }
+  if (ipOk(await ipctl(`rule-add ${q(set)} ${q(chain)} ${q($('nr-dir').value)} ${q($('nr-target').value)}${app ? ' ' + q(app) : ''}`))) {
+    toast('Rule added', 'ok');
+    // start the next rule from a clean form: no app, default match
+    clearApp(); $('nr-dir').value = $('nr-chain').value === 'INPUT' ? 'src' : 'dst';
+    loadAdvanced(); poll();
+  }
+}
+// A rules.conf line is CHAIN|SET|DIR|TARGET[|UID]; ipctl.sh rule-del takes
+// the set first: rule-del <set> <chain> <dir> <target> [uid].
+const ruleArgs = f => [f[1], f[0], f[2], f[3]].concat(f[4] ? [f[4]] : []).map(q).join(' ');
+async function delRule(f) {
+  if (ipOk(await ipctl('rule-del ' + ruleArgs(f)))) { toast('Rule removed', 'ok'); loadAdvanced(); poll(); }
+}
+async function loadApps() {
+  if (APPS) return;
+  APPS = (await ipctl('apps')).split('\n').map(l => l.split('|')).filter(f => f.length === 2 && /^\d+$/.test(f[1]));
+  if ($('nr-app-q').value) appSearch($('nr-app-q').value);
 }
 
-async function refreshMembers() {
-  if (!selectedSet) return;
-  const res = await run(IPCTL + " list " + selectedSet);
-  const container = document.getElementById("member-list");
-  container.innerHTML = "";
-  const membersBlock = (res.stdout || "").split("Members:")[1] || "";
-  const members = membersBlock.split("\n").map(s => s.trim()).filter(Boolean);
-  if (members.length === 0) {
-    container.innerHTML = '<div class="muted" style="margin-top:10px;">No addresses added yet.</div>';
-    return;
+// Set details in the bottom sheet
+let _sheetSet = null;
+const MEMBERS_SHOWN = 300;
+async function openSet(name) {
+  _sheetSet = name; _sheetSrc = null;
+  $('sheet-dom').textContent = name;
+  $('sheet-sub').textContent = 'Loading…';
+  $('sheet-body').innerHTML = '';
+  $('sheet-bg').style.display = 'block';
+  requestAnimationFrame(() => $('sheet').classList.add('open'));
+  const t = await ipctl('list ' + q(name));
+  const i = t.indexOf('Members:');
+  const head = i >= 0 ? t.slice(0, i) : t;
+  const mem = i >= 0 ? t.slice(i + 8).split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const type = (head.match(/Type: (\S+)/) || [])[1] || '';
+  const fam = /family inet6/.test(head) ? 'IPv6' : (/family inet/.test(head) ? 'IPv4' : '');
+  $('sheet-sub').textContent = `${type}${fam ? ' · ' + fam : ''} · ${fmtN(mem.length)} member${mem.length === 1 ? '' : 's'}`;
+  let h = `<div class="inrow"><input id="sm-in" placeholder="member, e.g. ${type.indexOf('port') >= 0 ? '1.2.3.4,tcp:443' : '1.2.3.0/24'}" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')setMember('add')"><button onclick="setMember('add')">Add</button></div>`;
+  h += `<div class="rule-list mt8">${mem.slice(0, MEMBERS_SHOWN).map(e =>
+    `<div class="rule-row"><span class="ipl">${esc(e)}</span><button onclick="setMember('del', ${esc(JSON.stringify(e))})" aria-label="Remove">✕</button></div>`).join('') || '<div class="empty">Empty set.</div>'}</div>`;
+  if (mem.length > MEMBERS_SHOWN) h += `<div class="note">Showing the first ${MEMBERS_SHOWN}.</div>`;
+  h += `<div class="btn-row2"><button class="btn-s r" onclick="destroySet()">Delete set</button></div>`;
+  $('sheet-body').innerHTML = h;
+}
+// A downloaded list in the bottom sheet: search it, let a network through,
+// or block one more. A list is replaced on every update, so "let through"
+// goes to the allowlist (always wins) rather than editing the list itself.
+let _sheetSrc = null;
+async function openSource(id, filter) {
+  _sheetSrc = id; _sheetSet = null;
+  const s = SRC.find(x => x.id === id) || { group: '', label: id };
+  $('sheet-dom').textContent = `${s.group} ${s.label}`;
+  if (filter == null) {
+    $('sheet-sub').textContent = 'Loading…';
+    $('sheet-body').innerHTML = `<div class="inrow"><input id="sv-q" placeholder="Search, e.g. 103.117 or 2a0" autocapitalize="off" spellcheck="false" oninput="clearTimeout(window._svT); window._svT = setTimeout(() => openSource(_sheetSrc, this.value.trim()), 350)"></div>
+      <div class="rule-list mt8" id="sv-list"></div><div class="note" id="sv-note"></div>
+      <div class="sub-h"><span>Block one more address or network</span></div>
+      <div class="inrow"><input id="sv-add" placeholder="e.g. 203.0.113.0/24" autocapitalize="off" spellcheck="false"><button onclick="svBlock()">Block</button></div>`;
+    $('sheet-bg').style.display = 'block';
+    requestAnimationFrame(() => $('sheet').classList.add('open'));
   }
-  members.forEach(ip => {
-    const row = document.createElement("div");
-    row.className = "member-row";
-    row.innerHTML = '<code>' + ip + '</code>';
-    const btn = document.createElement("button");
-    btn.className = "btn-danger";
-    btn.style.padding = "5px 10px";
-    btn.style.fontSize = "10.5px";
-    btn.textContent = "remove";
-    btn.onclick = () => removeIp(ip);
-    row.appendChild(btn);
-    container.appendChild(row);
+  const f = (filter || '').replace(/[^0-9a-fA-F.:\/]/g, '');
+  const [head, body] = splitMarker(await ctl(`sources view ${q(id)}${f ? ' ' + q(f) : ''}`), '@@LIST@@');
+  const kv = parseKV(head);
+  if (kv.ok !== '1') { $('sv-list').innerHTML = `<div class="empty c-r">${esc(kv.error || 'Could not read the list')}</div>`; return; }
+  const items = body.split('\n').map(x => x.trim()).filter(Boolean);
+  $('sheet-sub').textContent = `${fmtN(kv.total)} networks · blocks ${kv.dir === 'both' ? 'both directions' : DIR_TXT[kv.dir].toLowerCase() + ' traffic'}`;
+  $('sv-list').innerHTML = items.length ? items.map(e => `<div class="rule-row"><span class="ipl">${esc(e)}</span><button class="btn-s" style="padding:1px 7px" onclick="svAllow(${esc(JSON.stringify(e))})">Let through</button></div>`).join('')
+    : `<div class="empty">${f ? 'No network matches.' : 'The list is empty.'}</div>`;
+  const shown = items.length, total = num(f ? kv.matches : kv.total);
+  $('sv-note').innerHTML = (total > shown ? `Showing ${fmtN(shown)} of ${fmtN(total)}${f ? ' matches' : ''} — search to narrow it down. ` : '')
+    + 'Lists are replaced on every update, so <b>Let through</b> puts the network on your allowlist, which always wins.';
+}
+async function svAllow(e) {
+  if (okOrToast(await ctl(`allow add ${q(e)}`), `${e} is let through (allowlist)`)) poll();
+}
+async function svBlock() {
+  const v = $('sv-add').value.trim();
+  if (!v) return;
+  if (okOrToast(await ctl(`block add ${q(v)}`), `${v} added to your blocklist`)) { $('sv-add').value = ''; poll(); }
+}
+
+function closeSheet() {
+  $('sheet').classList.remove('open');
+  setTimeout(() => { $('sheet-bg').style.display = 'none'; }, 200);
+}
+async function setMember(op, val) {
+  const v = val != null ? val : $('sm-in').value.trim();
+  if (!v) return;
+  if (ipOk(await ipctl(`${op} ${q(_sheetSet)} ${q(v)}`))) { toast(op === 'add' ? 'Added' : 'Removed', 'ok'); openSet(_sheetSet); loadAdvanced(); }
+}
+async function destroySet() {
+  const name = _sheetSet;
+  const rules = (await ipctl('rules')).split('\n').filter(l => /^[A-Z]+\|/.test(l)).map(l => l.split('|')).filter(f => f[1] === name);
+  const msg = rules.length
+    ? `The set "${name}" is used by ${rules.length} rule${rules.length > 1 ? 's' : ''}. Delete the rule${rules.length > 1 ? 's' : ''} and the set?`
+    : `Delete the set "${name}"?`;
+  if (!confirm(msg)) return;
+  for (const f of rules) {
+    if (!ipOk(await ipctl('rule-del ' + ruleArgs(f)))) { loadAdvanced(); return; }
+  }
+  if (ipOk(await ipctl('destroy ' + q(name)))) {
+    toast(rules.length ? `Set and ${rules.length} rule${rules.length > 1 ? 's' : ''} deleted` : 'Set deleted', 'ok');
+    closeSheet(); loadAdvanced(); poll();
+  } else loadAdvanced();
+}
+
+// Incoming traffic is matched by where it comes from, outgoing by where it
+// goes: switch the match along with the traffic direction.
+function onChainChange() {
+  const c = $('nr-chain').value, d = $('nr-dir');
+  if (c === 'INPUT' && d.value.indexOf('dst') === 0) d.value = d.value.replace(/^dst/, 'src');
+  if (c !== 'INPUT' && d.value.indexOf('src') === 0) d.value = d.value.replace(/^src/, 'dst');
+  if (c !== 'OUTPUT' && SEL_APP) clearApp();
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// System
+// ═════════════════════════════════════════════════════════════════════════
+let S = {};
+async function loadStatus(manual) {
+  const t = await ctl('status', 20000);
+  S = parseKV(t);
+  if (!S.version) { $('sys-health').innerHTML = `<div class="empty c-r">${esc(S.error || 'No answer')}</div>`; return; }
+  renderStatus(S);
+  if (manual) toast('Status refreshed', 'ok');
+}
+const yes = v => v === '1';
+
+function renderStatus(s) {
+  const [p4, t4] = famLabel(s.ipv4), [p6, t6] = famLabel(s.ipv6);
+  const j4 = ['output', 'input', 'forward'].every(k => yes(s['jump4_' + k]));
+  const j6 = ['output', 'input', 'forward'].every(k => yes(s['jump6_' + k]));
+  const active = s.state === 'protected' || s.state === 'partial';
+  let h = '';
+  h += row('IPv4 firewall', s.ipv4 && s.ipv4.indexOf('error') === 0 ? esc(famReason(s.ipv4)) : 'iptables + ipset', p4, t4);
+  h += row('IPv6 firewall', s.ipv6 && s.ipv6.indexOf('error') === 0 ? esc(famReason(s.ipv6)) : (s.ipv6 === 'unavailable' ? 'no ip6tables on this device' : 'ip6tables + ipset'), p6, t6);
+  if (active) {
+    h += row('Rules linked in (IPv4)', 'outgoing, incoming and hotspot traffic pass through the module', j4 ? 'ok' : 'bad', j4 ? 'Yes' : 'Missing');
+    if (s.ipv6 === 'ok' || s.ipv6 === 'ok-drop') h += row('Rules linked in (IPv6)', '', j6 ? 'ok' : 'bad', j6 ? 'Yes' : 'Missing');
+  }
+  h += row('Watchdog', s.watchdog === 'running' ? `pid ${esc(s.watchdog_pid)} · ${num(s.repairs)} repair(s)${s.last_repair && s.last_repair !== 'none' ? ' · last: ' + esc(s.last_repair) : ''}` : 'not running',
+           s.watchdog === 'running' ? 'ok' : 'bad', s.watchdog === 'running' ? 'Running' : 'Stopped');
+  h += row('Lists in the kernel', s.sources_not_loaded ? 'not loaded: ' + esc(s.sources_not_loaded) : (s.sources_enabled ? esc(s.sources_enabled.split(',').map(srcName).join(', ')) : 'none selected'),
+           s.sources_not_loaded ? 'warn' : 'ok', s.sources_not_loaded ? 'Pending' : 'OK');
+  if (num(s.adv_rules)) {
+    const bad = num(s.adv_rules_skipped) + num(s.adv_rules_rejected);
+    h += row('Your advanced rules', bad ? `${bad} not active (set missing or refused by the kernel)` : `${num(s.adv_rules)} active`, bad ? 'warn' : 'ok', bad ? 'Check' : 'OK');
+  }
+  $('sys-health').innerHTML = h;
+
+  let g = '';
+  g += rowCtl('Filter IPv6', 'Apply the lists to IPv6 traffic as well', sw('sw-ipv6', yes(s.ipv6_setting), "setSetting('IPV6', this.checked ? 1 : 0, this)"));
+  g += rowCtl('Filter hotspot clients', 'Apply the lists to devices using this phone’s hotspot or USB tethering', sw('sw-fwd', yes(s.forward_block), "setSetting('FORWARD_BLOCK', this.checked ? 1 : 0, this)"));
+  const dn = s.dnscrypt === 'found' ? `${num(s.dnscrypt_addrs)} address${num(s.dnscrypt_addrs) === 1 ? '' : 'es'} of its resolvers are never blocked`
+    : s.dnscrypt === 'absent' ? 'The dnscrypt-proxy module is not installed' : 'Off — the lists may block its resolvers';
+  g += rowCtl('Protect DNSCrypt resolvers', dn, sw('sw-dnsc', yes(s.dnscrypt_setting), "setSetting('DNSCRYPT_ALLOW', this.checked ? 1 : 0, this)"));
+  $('sys-settings').innerHTML = g;
+  document.querySelectorAll('#tgt-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === s.out_target));
+
+  let d = '';
+  d += row('Module', esc(s.version) + ' · code ' + esc(s.version_code), 'skip', 'ipset ' + (s.ipset_version || '?'));
+  d += row('Kernel', esc(s.kernel), 'skip', 'SELinux ' + (s.selinux || '?'));
+  const kc = v => v === 'y' ? ['ok', 'built in'] : v === 'm' ? ['ok', 'module'] : v === '?' ? ['skip', 'unknown'] : ['bad', 'missing'];
+  [['IP_SET', 'kcfg_ip_set', 'ipset support'], ['NETFILTER_XT_SET', 'kcfg_xt_set', 'iptables set match'], ['IP6_NF_TARGET_REJECT', 'kcfg_ip6_reject', 'IPv6 reject']].forEach(([n, k, desc]) => {
+    const [p, t] = kc(s[k]); d += row('CONFIG_' + n, desc, p, t);
+  });
+  d += row('ip6tables', esc(s.ip6tables), s.ip6tables === 'missing' ? 'bad' : 'ok', s.ip6tables === 'missing' ? 'Missing' : 'Found');
+  $('sys-dev').innerHTML = d;
+}
+
+async function setSetting(key, val, el) {
+  const box = el && el.closest ? el.closest('.sw') : null;
+  if (box) box.classList.add('busy');
+  const r = okOrToast(await ctl(`set ${key} ${val}`), 'Saved');
+  if (box) box.classList.remove('busy');
+  loadStatus(); poll();
+  return r;
+}
+
+async function doApply() {
+  const r = parseKV(await ctl('apply'));
+  $('act-result').innerHTML = r.ok === '1'
+    ? `<span class="c-g">Rules applied — IPv4: ${esc(r.ipv4)}, IPv6: ${esc(r.ipv6)}</span>`
+    : `<span class="c-r">${esc(r.error || 'Apply failed')}</span>`;
+  loadStatus(); poll();
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Log
+// ═════════════════════════════════════════════════════════════════════════
+let LOG = [], LOGSRC = 'module';
+const LV = { INFO: true, WARN: true, ERROR: true };
+function toggleFilter(btn) {
+  const lv = btn.dataset.lv;
+  LV[lv] = !LV[lv];
+  btn.classList.toggle('on', LV[lv]);
+  renderLog();
+}
+function parseLog(text) {
+  return text.split('\n').filter(Boolean).map(l => {
+    const m = l.match(/^(\S+ \S+|boot\+\d+s) \[(INFO|WARN|ERROR|DEBUG)\] (.*)$/);
+    return m ? { t: m[1], lv: m[2], m: m[3] } : { t: '', lv: 'INFO', m: l };
   });
 }
-
-async function addIp() {
-  const ip = document.getElementById("ip-input").value.trim();
-  if (!selectedSet) { await customAlert("Select a set first"); return; }
-  if (!safeAddr(ip)) { await customAlert("Invalid IP/CIDR"); return; }
-  await run(IPCTL + " add " + selectedSet + " " + ip);
-  document.getElementById("ip-input").value = "";
-  await refreshMembers();
+function renderLog() {
+  const vis = LOG.filter(e => LV[e.lv] !== false);
+  $('log-count').textContent = `${vis.length}/${LOG.length}`;
+  $('log-body').innerHTML = vis.length
+    ? vis.map(e => `<span class="ll ${e.lv}">${e.t ? `<span class="t">${esc(e.t)}</span> ` : ''}<span class="m">${esc(e.m)}</span></span>`).join('')
+    : '<span class="log-info">Nothing to show.</span>';
+  const b = $('log-body'); b.scrollTop = b.scrollHeight;
+}
+async function loadLog() {
+  LOGSRC = $('log-src').value;
+  $('log-clear').style.display = LOGSRC === 'update' ? 'none' : '';
+  let text = '';
+  if (LOGSRC === 'module') text = splitMarker(await ctl('log 400'), '@@LOG@@')[1];
+  else if (LOGSRC === 'boot') text = await ipctl('bootlog');
+  else text = splitMarker(await ctl('update-status'), '@@LOG@@')[1] || '(no update has run since boot)';
+  LOG = parseLog(text);
+  renderLog();
+}
+async function clearLog() {
+  if (!confirm(LOGSRC === 'boot' ? 'Clear the boot log?' : 'Clear the module log?')) return;
+  const t = LOGSRC === 'boot' ? await ipctl('bootlog-clear') : await ctl('log-clear');
+  if (/ok=1|OK:/.test(t)) { toast('Cleared', 'ok'); loadLog(); } else toast('Could not clear', 'err');
 }
 
-async function removeIp(ip) {
-  if (!selectedSet) return;
-  await run(IPCTL + " del " + selectedSet + " " + ip);
-  await refreshMembers();
+// ═════════════════════════════════════════════════════════════════════════
+// Start
+// ═════════════════════════════════════════════════════════════════════════
+function refreshNow() {
+  poll();
+  if (currentTab === 'lists') loadSources();
+  if (currentTab === 'tools') { loadList('block'); loadList('allow'); if ($('adv').open) loadAdvanced(); }
+  if (currentTab === 'sys') loadStatus();
+  if (currentTab === 'log') loadLog();
 }
 
-// ---- Config section (03): independent of the member view, so managing
-// rules never requires scrolling past a set's (possibly huge) IP list ----
-
-let configSet = null;
-// slotAssignment[i] = {chain,dir,target,uid} this specific slot currently holds, or null if empty.
-// This is what makes each button independent: a slot keeps its identity across
-// refreshes instead of being reassigned positionally from the rules list.
-let slotAssignment = [null, null, null];
-
-function sameRule(a, b) {
-  return a && b && a.chain === b.chain && a.dir === b.dir && a.target === b.target && (a.uid || "") === (b.uid || "");
-}
-
-let appList = [];       // [{pkg, uid}, ...] cached after first load
-let selectedApp = null; // {pkg, uid} or null
-
-async function ensureAppsLoaded() {
-  if (appList.length > 0) return;
-  const res = await run(IPCTL + " apps");
-  const lines = (res.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
-  appList = lines
-    .map(l => { const [pkg, uid] = l.split("|"); return { pkg, uid }; })
-    .filter(a => a.pkg && a.uid);
-}
-
-async function onAppSearchFocus() {
-  await ensureAppsLoaded();
-}
-
-function onAppSearchInput(query) {
-  const results = document.getElementById("config-app-results");
-  const q = query.trim().toLowerCase();
-  if (!q) {
-    results.classList.remove("show");
-    results.innerHTML = "";
+(async function init() {
+  try {
+    EXEC_MODE = await detectExecMode();
+  } catch (e) {
+    setBanner('b-error', 'No root access');
+    document.querySelector('main').innerHTML = `<div class="fatal">This page needs the root bridge of KernelSU, SukiSU, APatch or MMRL to talk to the module.<br><br>Open it from your root manager's module list (WebUI button), and make sure the manager has root access.<br><br>(${esc(e.message || e)})</div>`;
     return;
   }
-  const matches = appList.filter(a => a.pkg.toLowerCase().includes(q)).slice(0, 8);
-  if (matches.length === 0) {
-    results.innerHTML = '<div class="app-result-row" style="cursor:default; color:var(--text-dim);">No installed app matches "' + query + '"</div>';
-    results.classList.add("show");
-    return;
-  }
-  results.innerHTML = "";
-  matches.forEach(a => {
-    const row = document.createElement("div");
-    row.className = "app-result-row";
-    row.innerHTML = a.pkg + '<span class="app-result-uid">uid ' + a.uid + '</span>';
-    row.onclick = () => selectApp(a.pkg, a.uid);
-    results.appendChild(row);
-  });
-  results.classList.add("show");
-}
+  $('src-info').textContent = EXEC_MODE === 'callback' ? 'ksu.exec' : 'ksu.exec (legacy)';
+  await poll();
+  loadSources();
+  setInterval(() => { if (!document.hidden) poll(); }, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+})();
 
-function selectApp(pkg, uid) {
-  selectedApp = { pkg, uid };
-  document.getElementById("config-app-search").value = "";
-  document.getElementById("config-app-results").classList.remove("show");
-  document.getElementById("config-app-results").innerHTML = "";
-  document.getElementById("config-app-chip-label").textContent = pkg + " (uid " + uid + ")";
-  document.getElementById("config-app-chip-row").classList.add("show");
-}
-
-function clearApp() {
-  selectedApp = null;
-  document.getElementById("config-app-chip-row").classList.remove("show");
-}
-
-async function configSelectSet(name) {
-  configSet = name || null;
-  slotAssignment = [null, null, null]; // slots are per-set, reset on switch
-  await refreshConfigPanel();
-}
-
-async function refreshConfigPanel() {
-  const enabled = !!configSet;
-  document.getElementById("config-destroy-btn").disabled = !enabled;
-
-  if (!enabled) {
-    slotAssignment = [null, null, null];
-    for (let i = 1; i <= 3; i++) {
-      const badge = document.getElementById("rule-status-" + i);
-      const btn = document.getElementById("rule-btn-" + i);
-      badge.innerHTML = '<span class="dot"></span>inactive';
-      badge.className = "rule-status-badge";
-      btn.textContent = "Enable rule";
-      btn.disabled = true;
-    }
-    return;
-  }
-
-  const res = await run(IPCTL + " rules");
-  const lines = (res.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
-  let activeNow = lines
-    .map(l => l.split("|"))
-    .filter(p => p.length >= 4 && p[1] === configSet)
-    .map(p => ({ chain: p[0], dir: p[2], target: p[3], uid: p[4] || "" }));
-
-  // 1) keep each slot's own rule if it's still active; otherwise the slot goes empty
-  for (let i = 0; i < 3; i++) {
-    if (slotAssignment[i] && !activeNow.some(r => sameRule(r, slotAssignment[i]))) {
-      slotAssignment[i] = null; // was removed (e.g. via Disable) - free this slot
-    }
-  }
-  // remove whatever is already claimed by a slot from the pool
-  activeNow = activeNow.filter(r => !slotAssignment.some(s => sameRule(s, r)));
-
-  // 2) any active rule not claimed by a slot (first load, or created outside the UI)
-  //    gets adopted by the next free slot, in order
-  for (let i = 0; i < 3 && activeNow.length > 0; i++) {
-    if (!slotAssignment[i]) {
-      slotAssignment[i] = activeNow.shift();
-    }
-  }
-
-  for (let i = 0; i < 3; i++) {
-    const badge = document.getElementById("rule-status-" + (i + 1));
-    const btn = document.getElementById("rule-btn-" + (i + 1));
-    btn.disabled = false;
-    if (slotAssignment[i]) {
-      badge.innerHTML = '<span class="dot"></span>active';
-      badge.className = "rule-status-badge on";
-      btn.textContent = "Disable rule " + slotAssignment[i].chain + (slotAssignment[i].uid ? " (uid " + slotAssignment[i].uid + ")" : "");
-    } else {
-      badge.innerHTML = '<span class="dot"></span>inactive';
-      badge.className = "rule-status-badge";
-      btn.textContent = "Enable rule";
-    }
-  }
-}
-
-async function toggleSlot(slotNum) {
-  if (!configSet) return;
-  const idx = slotNum - 1;
-  const existing = slotAssignment[idx];
-
-  if (existing) {
-    // disable using the exact chain/dir/target/uid this slot was created with,
-    // regardless of whatever the config box currently shows
-    await run(IPCTL + " rule-del " + configSet + " " + existing.chain + " " + existing.dir + " " + existing.target + (existing.uid ? " " + existing.uid : ""));
-    slotAssignment[idx] = null;
-  } else {
-    const chain = document.getElementById("config-chain").value;
-    const dir = document.getElementById("config-dir").value;
-    const target = document.getElementById("config-target").value;
-    const uid = selectedApp ? selectedApp.uid : "";
-
-    const listRes = await run(IPCTL + " list " + configSet);
-    const countMatch = (listRes.stdout || "").match(/Number of entries:\s*(\d+)/);
-    const memberCount = countMatch ? parseInt(countMatch[1], 10) : 0;
-    if (memberCount < 1) {
-      await customAlert("'" + configSet + "' has no addresses yet. Add at least one IP/CIDR before enabling a rule - an empty set blocks nothing.");
-      return;
-    }
-
-    if (uid && chain !== "OUTPUT") {
-      await customAlert("Per-app filtering only works with chain = OUTPUT. Switch the chain dropdown to OUTPUT, or pick \"All apps\".");
-      return;
-    }
-
-    const dup = slotAssignment.some(s => sameRule(s, { chain, dir, target, uid }));
-    if (dup) {
-      await customAlert("This rule already exists (" + chain + " / " + dir + " / " + target + (uid ? " / uid " + uid : "") + ").");
-      return;
-    }
-
-    // this specific slot claims whatever is currently set in the Config box -
-    // claim it BEFORE the refresh so it can never be picked up by another slot
-    slotAssignment[idx] = { chain, dir, target, uid };
-    await run(IPCTL + " rule-add " + configSet + " " + chain + " " + dir + " " + target + (uid ? " " + uid : ""));
-  }
-
-  await refreshConfigPanel();
-  await refreshRules();
-}
-
-async function destroySetFromConfig() {
-  if (!configSet) return;
-  if (!(await customConfirm("Delete the entire set '" + configSet + "'? Any active firewall rule for it will be removed automatically first."))) return;
-
-  const rulesRes = await run(IPCTL + " rules");
-  const lines = (rulesRes.stdout || "").split("\n").map(l => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    const parts = line.split("|");
-    if (parts.length >= 4 && parts[1] === configSet) {
-      const [chain, , dir, target, uid] = parts;
-      await run(IPCTL + " rule-del " + configSet + " " + chain + " " + dir + " " + target + (uid ? " " + uid : ""));
-    }
-  }
-
-  await run(IPCTL + " destroy " + configSet);
-
-  if (selectedSet === configSet) {
-    selectedSet = null;
-    document.getElementById("detail").style.display = "none";
-  }
-  configSet = null;
-  document.getElementById("config-set-select").value = "";
-
-  await refreshSets();
-  await refreshConfigPanel();
-  await refreshRules();
-}
-
-async function refreshRules() {
-  const res = await run(IPCTL + " rules");
-  document.getElementById("rules-out").textContent = res.stdout || "(no active rules)";
-}
-
-async function runPing() {
-  const ip = document.getElementById("ping-input").value.trim();
-  const bare = ip.split("/")[0]; // ping doesn't take CIDR
-  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(bare)) { await customAlert("Invalid IP"); return; }
-  const out = document.getElementById("ping-out");
-  out.textContent = "Pinging " + bare + " ...";
-  const res = await run("ping -c 3 -W 2 " + bare);
-  out.textContent = (res.stdout || "") + (res.stderr ? ("\n" + res.stderr) : "");
-}
-
-async function refreshFeedStatus() {
-  const res = await run(IPCTL + " feed-status");
-  const rawLines = (res.stdout || "").split("\n").filter(Boolean);
-  const display = rawLines.map(l => l.replace(/"count":(\d+)/, (m, n) => '"count":' + formatCount(n)));
-  document.getElementById("feed-status").textContent = display.join("\n") || "(no response)";
-}
-
-async function updateFeedNow() {
-  const res = await run(IPCTL + " feed-update");
-  await refreshFeedStatus();
-  await refreshSets();
-  if (res.exitCode !== 0) {
-    const errLine = (res.stdout || "").split("\n").find(l => l.startsWith("ERROR:")) || res.stderr || "unknown error";
-    await customAlert("Feed update failed - existing feed left untouched.\n\n" + errLine);
-  }
-}
-
-async function refreshBootlog() {
-  const res = await run(IPCTL + " bootlog");
-  document.getElementById("bootlog-out").textContent = res.stdout || res.stderr || "(no response)";
-}
-
-async function clearBootlog() {
-  if (!(await customConfirm("Clear the boot restore log? This deletes the on-disk history of what service.sh did on past reboots - it starts fresh on the next boot."))) return;
-  await run(IPCTL + " bootlog-clear");
-  await refreshBootlog();
-}
-
-// Browsers/WebViews auto-restore a <select>'s visually-chosen option across
-// navigation (even a full reload), independent of our own JS state which
-// always starts fresh as null. Force them back in sync on every load, or
-// the dropdown can visually show a set while the rule slots think none is
-// selected (e.g. after visiting help.html and returning).
-document.getElementById("config-set-select").value = "";
-
-document.getElementById("new-set-type").addEventListener("change", syncFamilySelector);
-syncFamilySelector();
-
-refreshStatus();
-refreshSets();
-refreshRules();
-refreshConfigPanel();
-refreshFeedStatus();
-refreshBootlog();
 </script>
 </body>
 </html>

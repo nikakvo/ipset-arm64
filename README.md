@@ -1,164 +1,163 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/ARM64-only-00d4ff?style=flat-square" />
+  <img src="https://img.shields.io/badge/v7.24--r10-blue?style=flat-square" />
+  <img src="https://img.shields.io/badge/SukiSU%20%2F%20KernelSU%20%2F%20APatch%20%2F%20Magisk-compatible-4affb4?style=flat-square" />
+  <img src="https://img.shields.io/badge/IPv4%20%2B%20IPv6-filtered-00d4ff?style=flat-square" />
+</p>
+
 # ipset-arm64
 
-Statically-linked `ipset` binary for Android (arm64), packaged as a systemless Magisk/KernelSU/APatch module — **now with a full dynamic control layer and WebUI**, not just the raw binary.
+IP-level blocklists for Android. The module loads lists of known-bad networks — botnets, malware control servers, hijacked address space — into the kernel with **ipset**, and blocks traffic to and from them with **iptables** and **ip6tables**. Everything is controlled from a WebUI in your root manager.
 
-`ipset` is not included in AOSP/GKI userspace by default. This module provides the missing userspace tool for devices whose kernel already has `CONFIG_IP_SET` compiled in (check with `zcat /proc/config.gz | grep IP_SET` or `cat /proc/net/ip_tables_matches | grep set`), plus everything needed to actually *use* it without touching a terminal.
+DNS blocking stops a name from being looked up; it cannot stop an app that connects to a **hard-coded IP address**. This module can. It is the companion of [dnscrypt-proxy-android-arm64-only](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only), and the two work together.
 
+<img width="300" alt="ipset-arm64 WebUI" src="https://raw.githubusercontent.com/nikakvo/ipset-arm64/main/ipset-arm64.jpg" />
 
-## What is ipset?
+## Features
 
-`ipset` lets you group IP addresses, networks, MAC addresses, and ports into named **sets**, which `iptables`/`ip6tables` can then match against with a single rule instead of one rule per address.
+* **Blocklists to choose from**: FireHOL Level 1–4, FireHOL Web client and Spamhaus DROPv6 — IPv4 and IPv6
+* **A direction for each list**: block outgoing connections, incoming ones, or both
+* **Nothing is downloaded until you ask**: pick your lists, tap Update; automatic updates (daily or weekly) only if you switch them on, with the next run and the last result on the Dashboard
+* **Safe updates**: a new list replaces the old one in a single step, a failed download keeps the last good copy, special-purpose ranges (your LAN, carrier NAT, loopback…) are never blocked
+* **Your own blocklist and allowlist**, also as plain text files on the sdcard
+* **Check an address**: which list holds it and what the module does with it
+* **Test connection**: a real connection from the phone, and whether this module stopped it
+* **View and search** the contents of any list, and let a network through
+* **Advanced**: your own ipset sets and firewall rules, per app if you like, as in earlier versions
+* **Watchdog**: puts the rules back within seconds when Android's network daemon or another app removes them
+* **DNSCrypt aware**: the resolvers the DNSCrypt module uses are never blocked
+* **Help** built into the WebUI, explaining every screen and setting
 
-Benefits over plain iptables rules:
-- **O(1) hash-based lookups** instead of linear rule-by-rule scanning
-- **Dynamic updates** — add/remove addresses from a set without touching or reloading the firewall ruleset
-- Cleaner, shorter iptables rulesets when dealing with large address lists
+## How it works
 
-Typical uses: blocking a known-bad server by IP, blocking an entire hosting range (CIDR) that keeps serving abuse traffic, cutting off an app that ignores your DNS settings and connects straight to a hardcoded IP, or building a personal blocklist of ad/telemetry endpoints.
+The module keeps its rules in its own chains, linked at the top of Android's `OUTPUT`, `INPUT` and `FORWARD` chains:
+
+```
+outgoing   loopback → your advanced rules → allowlist → DNSCrypt resolvers
+           → LAN & special ranges → lists (Outgoing/Both) → refuse or drop
+
+incoming   loopback → your advanced rules → replies to the phone's own
+           connections → allowlist, DNSCrypt, LAN → lists (Incoming/Both) → drop
+```
+
+* Each list is its own ipset set. Lists join a per-direction aggregate (`list:set`), and the firewall rules only reference those aggregates — so adding, removing, updating a list or changing its direction never touches iptables.
+* Rules are written with one `iptables-restore` per family: the kernel swaps them in at once, after checking them in test mode first. A rule the kernel refuses never replaces a working chain.
+* Android's netd flushes the built-in chains when it starts and when it restarts. The watchdog checks every 10 seconds and repairs the links; the Dashboard counts the repairs.
+* If anything fails, the network keeps working (fail-open) and the WebUI says what is wrong.
 
 ## Requirements
 
-- Root (Magisk, KernelSU, SukiSU-Ultra, APatch, or any compatible fork)
-- Kernel with `CONFIG_IP_SET=y` (or relevant `m` modules loaded)
-- `iptables` with `xt_set` match/target support (`CONFIG_NETFILTER_XT_SET=y`)
-- A manager with WebUI support (KernelSU Next, SukiSU-Ultra Manager, or any MMRL-compatible manager) to use the control panel — the raw `ipctl.sh` commands work with any manager regardless of WebUI support
+| | |
+|---|---|
+| CPU | arm64 only |
+| Root | SukiSU Ultra, KernelSU or APatch — WebUI built in. Magisk works too; open the WebUI with MMRL or KSU WebUI Standalone |
+| Kernel | `CONFIG_IP_SET` and `CONFIG_NETFILTER_XT_SET` (most GKI kernels have both) |
+| IPv6 | `ip6tables` with the set match; without it, IPv4 is still protected and the WebUI says so |
 
-Not every set type is compiled into every kernel. `ipctl.sh status` reports what the running kernel actually provides, so check there before assuming a type is available.
+System → Device in the WebUI shows whether your kernel has what is needed.
 
 ## Installation
 
-1. Download the latest release zip from [Releases](../../releases)
-2. Flash via your root manager's module installer (Magisk Manager / KernelSU Manager / SukiSU-Ultra Manager → Modules → Install from storage)
-3. Reboot
-4. Open the module's WebUI from your manager (or verify manually: `su -c ipset -v`)
+1. Download the zip from [Releases](../../releases)
+2. Flash it in your root manager and reboot
+3. Open the module's WebUI → **Lists** → choose your lists (FireHOL Level 1 and Spamhaus DROPv6 are preselected) → **Update lists**
+4. The Dashboard shows **Protected**
 
-<img width="300" alt="ipset-arm64" src="https://raw.githubusercontent.com/nikakvo/ipset-arm64/refs/heads/main/ipset-arm64.jpg" />
+Updating from an earlier version keeps your settings, advanced sets and rules. The old threat feed (`feed_firehol_level1`) becomes the FireHOL Level 1 list, and its old rules are removed — protection continues right away, even without a network at boot.
 
-## Usage
+## WebUI
 
-### Via the WebUI (recommended)
+| Tab | |
+|---|---|
+| **Dashboard** | Protected or not, and why; networks blocked, packets stopped in and out; protection switch, pause (15 min / 1 h / 4 h); next and last automatic update |
+| **Lists** | The blocklists with their size, age and direction; View and search; Update with a live log; automatic update off / daily / weekly |
+| **Tools** | Check an address, Test connection, your blocklist and allowlist, advanced sets and rules |
+| **System** | Health of the IPv4 and IPv6 rules, watchdog, settings, kernel features |
+| **Log** | Module log, last boot, last update |
 
-Open the module from your manager's WebUI list. The control panel walks you through:
+## Blocklists
 
-1. **Status** — confirms your kernel actually supports ipset, and which set types it provides
-2. **Sets** — create a set: pick a type, and an address family (IPv4 or IPv6)
-3. **Set Detail** — add/remove entries, toggle the firewall rule on or off
-4. **Config** — chain, direction, target, and optional per-app filtering by UID
-5. **Active Rules** — see everything currently being enforced, at a glance
-6. **Threat Feed** — one-tap import of a public IP blocklist into a managed set
-7. **Connectivity Test** — built-in ping, to confirm a block actually took effect
-8. **Boot Restore Log** — what got reloaded on the last boot
-9. **Command Log** — session history of every action taken
-
-Tap **HELP** in the control panel for the full walkthrough with example commands for each section.
-
-### Set types
-
-All the types the kernel exposes are available, not just the two most common:
-
-| Type | Holds | Example entry |
+| List | Size | |
 |---|---|---|
-| `hash:ip` | single addresses | `104.20.23.154` |
-| `hash:net` | networks / CIDR ranges | `104.20.20.0/22` |
-| `hash:mac` | MAC addresses | `aa:bb:cc:dd:ee:ff` |
-| `hash:ip,mac` | address + MAC pair | `192.168.1.5,aa:bb:cc:dd:ee:ff` |
-| `hash:net,net` | network pairs (source + destination) | `10.0.0.0/8,192.168.0.0/16` |
-| `hash:ip,port` | address + port | `1.2.3.4,tcp:443` |
-| `hash:net,port` | network + port | `10.0.0.0/8,udp:53` |
-| `hash:net,iface` | network + interface | `10.0.0.0/8,wlan0` |
+| FireHOL Level 1 | ~4,700 | Recommended. Botnets, malware control servers, hijacked networks — minimum false positives |
+| FireHOL Level 2 | ~18,500 | Attacks seen in the last 48 hours |
+| FireHOL Level 3 | ~12,000 | Attackers, spyware and malware of the last 30 days |
+| FireHOL Level 4 | ~160,000 | Aggressive; expect false positives |
+| FireHOL Web client | ~470 | Addresses browsers and apps should never talk to |
+| Spamhaus DROPv6 | ~90 | Recommended. IPv6 networks hijacked or run by cyber-crime |
 
-`ipctl.sh types` lists the full set, including the `bitmap:*` and `list:set` types.
+**Directions.** *Outgoing* stops connections from the phone to a listed address. *Incoming* drops connections a listed address starts towards the phone, while the phone's own connections to it still work. *Both* is the default. Example: Level 1 on Both and Level 4 on Incoming — attackers cannot reach the phone, and Level 4's false positives never break a site you open.
 
-Sets are IPv4 by default. For IPv6, pick **IPv6** in the address-family dropdown when creating the set, or pass it on the command line:
+**Updates.** A failed download, or one with far fewer entries than expected, is discarded and the last good copy stays in use. Automatic updates refresh each list a day or a week after its last download, checked once a minute from two minutes after boot; failed attempts are retried an hour later. Spamhaus asks for at most one download an hour, and the module keeps to it.
+
+## Your lists
+
+`/sdcard/ipset-arm64/ip-blocklist.txt` and `ip-allowlist.txt` — one IPv4/IPv6 address or network per line, `#` for comments. Edit them in the WebUI or with any app; changes apply within 10 seconds. Your blocklist has its own direction. The allowlist always wins over every list.
+
+## Files
+
+| Path | |
+|---|---|
+| `/data/adb/ipset_arm64_data/settings.conf` | Settings — see Help → Files & settings for every key |
+| `/data/adb/ipset_arm64_data/ip-blocklist.txt`, `ip-allowlist.txt` | Your lists (mirrored to `/sdcard/ipset-arm64/`) |
+| `/data/adb/ipset_arm64_data/cache/` | Last good copy of each list |
+| `/data/adb/ipset_arm64_data/owned.list`, `sets.save`, `rules.conf` | Your advanced sets and rules |
+| `/data/adb/ipset_arm64_data/ipset.log`, `service.log` | Module log, last boot |
+
+## Command line
+
+Everything the WebUI does, from a root shell (`su -c` in Termux). Output is `key=value`.
 
 ```sh
-sh /data/adb/modules/ipset_arm64/ipctl.sh create v6block hash:net inet6
+sh /data/adb/modules/ipset_arm64/ctl.sh status
+sh /data/adb/modules/ipset_arm64/ctl.sh sources                       # the lists
+sh /data/adb/modules/ipset_arm64/ctl.sh sources enable firehol-level2
+sh /data/adb/modules/ipset_arm64/ctl.sh sources dir firehol-level4 in # out | in | both
+sh /data/adb/modules/ipset_arm64/ctl.sh update                        # download now
+sh /data/adb/modules/ipset_arm64/ctl.sh check 103.117.84.5
+sh /data/adb/modules/ipset_arm64/ctl.sh probe 103.117.84.5 443        # real connection test
+sh /data/adb/modules/ipset_arm64/ctl.sh block add 203.0.113.0/24
+sh /data/adb/modules/ipset_arm64/ctl.sh allow add 198.51.100.7
+sh /data/adb/modules/ipset_arm64/ctl.sh pause 15
+sh /data/adb/modules/ipset_arm64/ctl.sh set AUTO_UPDATE daily
 ```
 
-An IPv6 set accepts IPv6 entries only — that is ipset's own behaviour, not a limitation of this module. `bitmap:*` and `hash:mac` have no address family at all, and the dropdown disables itself for them.
-
-### Via shell (adb / Termux, `su`)
+Advanced sets and rules keep their own tool, compatible with earlier versions:
 
 ```sh
-sh /data/adb/modules/ipset_arm64/ipctl.sh create myservers hash:ip
-sh /data/adb/modules/ipset_arm64/ipctl.sh add myservers 1.2.3.4 5.6.7.8
-sh /data/adb/modules/ipset_arm64/ipctl.sh rule-add myservers   # OUTPUT dst DROP by default
+sh /data/adb/modules/ipset_arm64/ipctl.sh create myset hash:net
+sh /data/adb/modules/ipset_arm64/ipctl.sh add myset 203.0.113.0/24
+sh /data/adb/modules/ipset_arm64/ipctl.sh rule-add myset OUTPUT dst REJECT
+sh /data/adb/modules/ipset_arm64/ipctl.sh rule-add myset OUTPUT dst DROP 10123   # one app (uid)
+sh /data/adb/modules/ipset_arm64/ipctl.sh types                                 # all set types
 ```
 
-`add` and `del` take any number of entries in one call and write the state file once at the end, which matters when loading thousands of addresses.
+All 16 set types are supported (`hash:net`, `hash:ip,port`, `hash:net,iface`, `bitmap:port`, `list:set`…); which ones work depends on the kernel. Sets named `ipsa_*` belong to the module. Sets created by other apps are never touched.
 
-Full command reference:
+## With DNSCrypt, a VPN, or another firewall
 
-```
-status  types  list  owned  create  destroy  add  del  test
-rule-add  rule-del  rules  apps
-bootlog  bootlog-clear  feed-update  feed-status
-save  restore  flush-all
-```
+* **DNSCrypt module**: its bootstrap resolvers, connectivity probe and pinned servers are read from its `dnscrypt-proxy.toml` and never blocked, so a list can never take DNS away from the phone. Switching resolvers in the DNSCrypt WebUI is followed within a minute.
+* **VPN**: apps' traffic passes the rules with its real destination before it enters the tunnel, so blocking keeps working with a VPN on.
+* **AFWall+ and others**: the module only adds its own chains and three links; other firewalls' rules are not changed.
 
-Details and examples for each are in `webroot/help.html`.
+## Uninstall
 
-### Raw ipset/iptables (bypassing the control layer entirely)
-
-Still works exactly as before, if you'd rather manage things yourself:
-
-```bash
-su -c "ipset create myservers hash:ip"
-su -c "ipset add myservers 1.2.3.4"
-su -c "iptables -A OUTPUT -m set --match-set myservers dst -j DROP"
-```
-
-Sets created this way are not managed by `ipctl.sh` — they are not persisted, not restored at boot, and never destroyed by `flush-all` or by uninstalling the module. `ipctl.sh status` lists them separately under *"Other sets on this device"* so you can see they exist without them being drawn into this module's state.
-
-## Ownership: what this module will and won't touch
-
-`ipset` has a single, flat, system-wide namespace. Anything on the device — a firewall app, a VPN client, one of your own scripts — creates sets in the same place this module does.
-
-So the module keeps an explicit manifest of the sets it created, at `/data/adb/ipset_arm64_data/owned.list`. Everything that saves, restores or destroys sets is scoped to that list:
-
-- `save` persists only the module's own sets
-- `restore` reloads only those at boot
-- `flush-all` destroys only those
-- `destroy` refuses to remove a set the module did not create
-- uninstalling removes only those
-
-`ipctl.sh owned` prints the list. This matters because deleting another program's firewall state on uninstall is not a recoverable mistake — versions before **v7.24-r9** did exactly that, and the manifest exists so it cannot happen again.
-
-## Threat feed
-
-`feed-update` downloads a public IP blocklist and loads it into a managed set (`feed_firehol_level1`) in one operation, building the new set alongside the old one and swapping it in atomically so there is no window with an empty blocklist. `feed-status` shows what is currently loaded and when it was last refreshed.
-
-The feed set is owned like any other, so it persists across reboots and is removed cleanly on uninstall.
-
-## Per-app filtering
-
-Rules can be scoped to a single app by its Android UID, so only that app's traffic is matched against the set. `ipctl.sh apps` lists installed packages with their UIDs, and the WebUI has a searchable picker.
-
-This only works on the `OUTPUT` chain. Android cannot attribute *incoming* packets to an app, so there is nothing to match on for `INPUT`.
-
-## Persistence
-
-Sets and rules are saved to `/data/adb/ipset_arm64_data/` — deliberately outside the module's own directory. Magisk/KernelSU replace a module's entire folder on update, so anything stored inside it would be lost every time you reflash. Storing state externally means updating to a newer release of this module doesn't touch your existing configuration; `service.sh` reapplies it automatically on every boot.
-
-## Uninstalling
-
-Removing the module through your manager's normal uninstall flow runs `uninstall.sh`, which removes the rules and sets **this module created** — at the kernel level, not just files — and deletes the external data directory. Sets belonging to other apps are left exactly as they were. Nothing of this module's is left running after it is gone.
-
-## Using this alongside dnscrypt-proxy-android-arm64-only
-
-[dnscrypt-proxy-android-arm64-only](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only) is a companion module that filters at the **DNS layer** (blocking by domain name, before an IP is even resolved). This module filters at the **IP/packet layer** (blocking by address, after an IP is known). They don't compete for the same traffic and are safe to run together — dnscrypt-proxy catches known-bad domains cheaply and broadly; ipset-arm64 catches what DNS filtering can't, like apps with hardcoded IPs that bypass your resolver entirely. See `webroot/help.html` for details.
+Remove the module in your root manager. Its chains, links and sets, your advanced sets and rules, and `/data/adb/ipset_arm64_data/` are removed; sets and rules of other apps are left alone. The copies of your lists in `/sdcard/ipset-arm64/` stay.
 
 ## Build details
 
-- Cross-compiled with Android NDK (aarch64-linux-android, API 29)
-- Statically linked against `libmnl` (netlink communication library)
-- Dynamically linked against Android's bionic libc/libdl (standard for NDK-built binaries — full static linking is not supported on Android)
-- Built from upstream sources: [ipset](https://git.netfilter.org/ipset) ([GitHub mirror](https://github.com/Olipro/ipset)) + [libmnl](https://git.netfilter.org/libmnl) ([GitHub mirror](https://github.com/Distrotech/libmnl))
+* `ipset` 7.24, cross-compiled with Android NDK r26d (aarch64-linux-android, API 29)
+* Statically linked against `libmnl`; dynamically against Android's bionic libc/libdl (standard for NDK binaries)
+* Built from upstream sources: [ipset](https://git.netfilter.org/ipset) and [libmnl](https://git.netfilter.org/libmnl)
+* Speaks ipset protocol version 7, which all current GKI kernels use
+* Scripts are POSIX sh: run-tested with mksh and busybox sh (syntax-checked with dash too), and with busybox awk and one-true-awk
 
-## Version compatibility
+## Credits
 
-This binary speaks **ipset protocol version 7**. It communicates with the kernel's `IP_SET` netlink interface, so it will work with any GKI kernel that has `CONFIG_IP_SET` enabled, regardless of Android version, as long as the kernel-side protocol version matches (all modern GKI kernels currently use protocol v7).
+* [FireHOL IP lists](https://github.com/firehol/blocklist-ipsets) — each list combines public sources with their own terms, see [iplists.firehol.org](https://iplists.firehol.org)
+* [Spamhaus DROP](https://www.spamhaus.org) — data © The Spamhaus Project, free to use with attribution
+* [ipset](https://ipset.netfilter.org) — the netfilter project, GPL-2.0
 
 ## Disclaimer
 
-Provided as-is, for testing and personal use. Not affiliated with the upstream ipset/netfilter project. Use at your own risk — always keep a backup.
+Provided as-is, for personal use. Not affiliated with the netfilter project, FireHOL or Spamhaus. Blocklists can contain false positives; if something stops working, **Tools → Check an address** tells you whether a list is the cause.

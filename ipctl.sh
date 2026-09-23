@@ -1,684 +1,472 @@
 #!/system/bin/sh
-# ipctl.sh - dynamic control layer for ipset-arm64 module
-# Nothing here is static: no set, no rule exists unless you create it.
+# ipctl.sh - advanced toolkit for ipset-arm64: sets and firewall rules you
+# build by hand. (The module's own protection - allowlist, blocklist, lists -
+# is controlled with ctl.sh.)
 #
 # Usage (as root):
-#   sh /data/adb/modules/ipset-arm64/ipctl.sh <command> [args]
+#   sh /data/adb/modules/ipset_arm64/ipctl.sh <command> [args]
 #
 # Commands:
-#   status                                   - kernel/binary capability check
-#   list [setname]                           - list all sets (summary) or one set's members
-#   types                                    - list every supported set type
-#   owned                                    - list the sets this module created
-#   create <name> [type] [inet|inet6]        - create a set (default type: hash:ip)
-#   destroy <name>                           - destroy a set (only ones we created)
-#   add <name> <entry> [entry ...]           - add one or more members
-#   del <name> <entry> [entry ...]           - remove one or more members
-#   test <name> <entry>                      - check if an entry is a member
-#   rule-add <name> [chain] [dir] [target] [uid]  - add firewall rule using the set (defaults: OUTPUT dst DROP; uid = per-app filter, OUTPUT chain only)
-#   rule-del <name> [chain] [dir] [target] [uid]  - remove that firewall rule
-#   apps                                     - list installed packages with their Android UID (for per-app filtering)
-#   rules                                    - list currently active dynamic rules
-#   bootlog                                  - show last boot's restore log (what service.sh did)
-#   save                                     - persist current set state to disk
-#   restore                                  - reload persisted sets + rules (used by service.sh at boot)
-#   bootlog-clear                            - clear that log
-#   flush-all                                - destroy every set THIS MODULE created and remove
-#                                              every rule it manages. Sets belonging to other
-#                                              apps are left untouched.
+#   status                                   - capability check and overview
+#   list [setname]                           - your sets (summary) or one set's members
+#   types                                    - every supported set type
+#   owned                                    - the sets you created here
+#   create <n> [type] [inet|inet6]           - create a set (default type: hash:ip)
+#   destroy <n>                              - destroy a set (only ones created here)
+#   add <n> <entry> [entry ...]              - add members
+#   del <n> <entry> [entry ...]              - remove members
+#   test <n> <entry>                         - is an entry a member?
+#   rule-add <n> [chain] [dir] [target] [uid]  - add a firewall rule for the set
+#                                              (defaults: OUTPUT dst DROP; uid = per-app,
+#                                              OUTPUT only; dir may be e.g. dst,dst for
+#                                              two-dimensional sets)
+#   rule-del <n> [chain] [dir] [target] [uid]  - remove that rule
+#   rules                                    - the rules you created
+#   apps                                     - installed packages with their UID
+#   feed-update / feed-status                - = the firehol-level1 source (compatibility)
+#   save / restore                           - persist / reload your sets
+#   bootlog / bootlog-clear                  - what the last boot did
+#   flush-all                                - remove every set and rule created here
+#
+# Rules run inside the module's chains (IPSA_ADV_OUT / _IN / _FWD), before
+# the module's own allowlist and blocklists, for IPv4 and IPv6 alike (the
+# set's family decides). ACCEPT and DROP/REJECT are final; RETURN means "no
+# decision here" - the packet continues to the module's own lists.
 
 set -u
 
 MODDIR="$(cd "$(dirname "$0")" && pwd)"
-
-# Persisted data lives OUTSIDE the module directory on purpose: on update,
-# Magisk/KernelSU replace $MODDIR entirely with the new zip's contents, so
-# anything stored inside it (e.g. $MODDIR/data) is wiped on every flash.
-# This external path survives updates and is only removed by uninstall.sh.
-DATA="/data/adb/ipset_arm64_data"
-mkdir -p "$DATA"
-
-# one-time migration from the old (broken) in-module location, if present
-if [ -d "$MODDIR/data" ] && [ -z "$(ls -A "$DATA" 2>/dev/null)" ]; then
-    cp -a "$MODDIR/data/." "$DATA/" 2>/dev/null
+if [ ! -f "$MODDIR/sh/common.sh" ]; then
+  echo "ERROR: sh/common.sh missing - reflash the module"
+  exit 1
 fi
-STATE="$DATA/sets.save"
-RULES="$DATA/rules.conf"
-LOG="$DATA/ipctl.log"
+# shellcheck source=/dev/null
+. "$MODDIR/sh/common.sh"
+load_settings
+mkdir -p "$DATA" "$RUN"
+touch "$OWNED" "$RULES"
+trap 'lock_release' EXIT
+trap 'lock_release; exit 1' INT TERM HUP PIPE
 
-# Names of the sets THIS MODULE created. Everything that saves,
-# restores or destroys sets is scoped to this list.
-#
-# Why: `ipset` has one flat, system-wide namespace. Earlier versions
-# used bare `ipset save` (which dumps every set on the device) and
-# `for n in $(ipset list -n); do ipset destroy "$n"; done` (which
-# destroys every set on the device). That meant this module quietly
-# adopted sets belonging to AFWall+, a VPN app or a user script into
-# its own state file, restored them at boot as if they were ours, and
-# destroyed them on `flush-all` - which uninstall.sh calls. Deleting
-# another program's firewall state on uninstall is not acceptable, so
-# ownership is now explicit.
-OWNED="$DATA/owned.list"
-touch "$OWNED"
-
-touch "$RULES"
-
-# One-time migration for installs that predate the manifest: adopt the
-# set names already present in our own save file. Those are the ones
-# this module was managing (correctly or not) before the fix, so losing
-# them on upgrade would be worse than inheriting them. Sets created by
-# anything else from here on are never touched.
+# One-time migration from the in-module data location used before r5.
+if [ -d "$MODDIR/data" ] && [ ! -s "$OWNED" ] && [ ! -s "$STATE" ]; then
+  cp -a "$MODDIR/data/." "$DATA/" 2>/dev/null
+fi
+# Installs from before the ownership manifest: adopt the sets in the save file.
 if [ ! -s "$OWNED" ] && [ -s "$STATE" ]; then
-    awk '$1=="create" {print $2}' "$STATE" 2>/dev/null | sort -u > "$OWNED"
+  awk '$1=="create" {print $2}' "$STATE" 2>/dev/null | sort -u > "$OWNED"
 fi
-
-own_add() {
-    grep -qx "$1" "$OWNED" 2>/dev/null || echo "$1" >> "$OWNED"
-}
-
-own_remove() {
-    grep -vx "$1" "$OWNED" > "${OWNED}.tmp" 2>/dev/null
-    mv "${OWNED}.tmp" "$OWNED"
-}
-
-own_list() {
-    [ -s "$OWNED" ] && cat "$OWNED" || true
-}
-
-own_has() {
-    grep -qx "$1" "$OWNED" 2>/dev/null
-}
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"
-}
-
-# Prefer the binary shipped in the module, fall back to PATH
-if [ -x "$MODDIR/system/bin/ipset" ]; then
-    IPSET="$MODDIR/system/bin/ipset"
-elif command -v ipset >/dev/null 2>&1; then
-    IPSET="$(command -v ipset)"
-else
-    echo "ERROR: ipset binary not found (checked module dir and PATH)"
-    exit 1
-fi
-
-IPTABLES="$(command -v iptables 2>/dev/null || echo /system/bin/iptables)"
 
 die() {
-    echo "ERROR: $*"
-    log "ERROR: $*"
-    exit 1
+  echo "ERROR: $*"
+  log_error "ipctl: $*"
+  exit 1
 }
 
-# ---- input validation (defense in depth, since input may come from a UI) ----
+if [ -z "$IPSET" ] || ! "$IPSET" --version >/dev/null 2>&1; then
+  die "ipset binary not found or not runnable (checked module dir and PATH)"
+fi
+
+need_lock() { lock_get 30 || die "busy - another operation is still running, try again"; }
+
+# ---- input validation (the input may come from a UI) ----
 
 valid_setname() {
-    # ipset set names: max 31 chars, keep it conservative
-    echo "$1" | grep -Eq '^[a-zA-Z0-9_]{1,31}$'
+  echo "$1" | grep -Eq '^[a-zA-Z0-9_]{1,31}$'
 }
 
+is_managed() { case "$1" in ipsa_*) return 0 ;; esac; return 1; }
+
 valid_settype() {
-    # Every set type the kernel provides. The module used to accept
-    # only hash:ip and hash:net, which meant the MAC-keyed types - the
-    # ones you cannot express any other way - were unreachable even
-    # though the kernel ships them.
-    case "$1" in
-        bitmap:ip|bitmap:ip,mac|bitmap:port) return 0 ;;
-        hash:ip|hash:mac|hash:ip,mac|hash:net|hash:net,net) return 0 ;;
-        hash:ip,port|hash:ip,port,ip|hash:ip,port,net) return 0 ;;
-        hash:ip,mark|hash:net,port|hash:net,port,net|hash:net,iface) return 0 ;;
-        list:set) return 0 ;;
-        *) return 1 ;;
-    esac
+  case "$1" in
+    bitmap:ip|bitmap:ip,mac|bitmap:port) return 0 ;;
+    hash:ip|hash:mac|hash:ip,mac|hash:net|hash:net,net) return 0 ;;
+    hash:ip,port|hash:ip,port,ip|hash:ip,port,net) return 0 ;;
+    hash:ip,mark|hash:net,port|hash:net,port,net|hash:net,iface) return 0 ;;
+    list:set) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 valid_family() {
-    case "$1" in
-        inet|inet6) return 0 ;;
-        *) return 1 ;;
-    esac
+  case "$1" in inet|inet6) return 0 ;; *) return 1 ;; esac
 }
 
+# Not a syntax check - ipset is the authority on what a member of each set
+# type looks like. This only guarantees that nothing can break out of the
+# argument: letters (protocol names, interface names), digits and the
+# punctuation members use. No whitespace, quotes, $ ` ; | & < > ( ) * ?
+# and no leading dash (it would be read as an option).
 valid_entry() {
-    # Deliberately NOT a syntax check. ipset itself is the authority on
-    # what a valid member looks like for each of the 15 set types, and
-    # duplicating that here would only go stale - the old IPv4-only
-    # regex already rejected perfectly good IPv6 addresses and MAC
-    # addresses outright.
-    #
-    # What this DOES guarantee is that nothing reaching the shell can
-    # break out of the argument: no whitespace, no quotes, no $ ` ; | &
-    # < > ( ) * ? or backslashes. Only the characters that legitimately
-    # appear in ipset members are allowed through - hex digits, dots,
-    # colons, slashes, commas, hyphens, underscores - and the result is
-    # handed to ipset, which rejects anything malformed with a clear
-    # error of its own.
-    case "$1" in
-        "") return 1 ;;
-        *[!0-9a-fA-F.:/,_-]*) return 1 ;;
-    esac
-    [ "${#1}" -le 128 ]
+  case "$1" in
+    "") return 1 ;;
+    -*) return 1 ;;
+    *[!0-9A-Za-z.:/,_-]*) return 1 ;;
+  esac
+  [ "${#1}" -le 128 ]
 }
 
 valid_chain() {
-    case "$1" in
-        INPUT|OUTPUT|FORWARD) return 0 ;;
-        *) return 1 ;;
-    esac
+  case "$1" in INPUT|OUTPUT|FORWARD) return 0 ;; *) return 1 ;; esac
 }
 
+# src / dst, or up to three comma-separated for multi-dimensional sets
 valid_dir() {
-    case "$1" in
-        src|dst) return 0 ;;
-        *) return 1 ;;
-    esac
+  echo "$1" | grep -Eq '^(src|dst)(,(src|dst)){0,2}$'
 }
 
 valid_target() {
-    case "$1" in
-        DROP|ACCEPT|REJECT|RETURN) return 0 ;;
-        *) return 1 ;;
-    esac
+  case "$1" in DROP|ACCEPT|REJECT|RETURN) return 0 ;; *) return 1 ;; esac
 }
+
+set_loaded() { "$IPSET" list -n 2>/dev/null | grep -qx "$1"; }
 
 # ---- commands ----
 
 cmd_status() {
-    echo "== ipset-arm64 status =="
-    echo "ipset binary   : $IPSET"
-    "$IPSET" --version >/dev/null 2>&1 && echo "  runs           : OK" || echo "  runs           : FAIL"
+  echo "== ipset-arm64 status =="
+  echo "ipset binary   : $IPSET"
+  if "$IPSET" --version >/dev/null 2>&1; then echo "  runs           : OK"; else echo "  runs           : FAIL"; fi
+  echo "iptables       : ${IPT4:-MISSING}"
+  echo "ip6tables      : ${IPT6:-MISSING}"
 
-    echo "iptables binary: $IPTABLES"
-    [ -x "$IPTABLES" ] && echo "  present        : OK" || echo "  present        : MISSING"
+  if [ -r /proc/config.gz ]; then
+    _kcfg=$(zcat /proc/config.gz 2>/dev/null)
+    for cfg in CONFIG_IP_SET CONFIG_IP_SET_HASH_IP CONFIG_IP_SET_HASH_NET CONFIG_IP_SET_HASH_MAC CONFIG_NETFILTER_XT_SET CONFIG_IP6_NF_TARGET_REJECT; do
+      val=$(echo "$_kcfg" | grep "^${cfg}=" | cut -d= -f2)
+      echo "  $cfg = ${val:-not set / not found}"
+    done
+  else
+    echo "  /proc/config.gz not readable - skipping kernel config check"
+  fi
 
-    if [ -r /proc/config.gz ]; then
-        # Read the compressed config once, not once per symbol.
-        _kcfg=$(zcat /proc/config.gz 2>/dev/null)
-        for cfg in CONFIG_IP_SET CONFIG_IP_SET_HASH_IP CONFIG_IP_SET_HASH_NET CONFIG_IP_SET_HASH_MAC CONFIG_NETFILTER_XT_SET; do
-            val=$(echo "$_kcfg" | grep "^${cfg}=" | cut -d= -f2)
-            if [ -n "$val" ]; then
-                echo "  $cfg = $val"
-            else
-                echo "  $cfg = not set / not found"
-            fi
-        done
-    else
-        echo "  /proc/config.gz not readable on this device - skipping kernel config check"
-        echo "  (falling back to functional test below)"
-    fi
+  echo ""
+  echo "Firewall (module chains):"
+  echo "  IPv4: $(fam_state 4)"
+  echo "  IPv6: $(fam_state 6)"
+  [ "$ENABLED" != "1" ] && echo "  master switch: OFF"
+  is_paused && echo "  paused: $(pause_left)s left"
 
-    if "$IPTABLES" -m set --help >/dev/null 2>&1; then
-        echo "  xt_set match   : OK"
-    else
-        echo "  xt_set match   : possibly missing (iptables -m set --help failed)"
-    fi
+  echo ""
+  echo "Sets created here:"
+  if [ -s "$OWNED" ]; then
+    own_list | while read -r n; do
+      if set_loaded "$n"; then echo "  - $n"; else echo "  - $n  (in manifest but not currently loaded)"; fi
+    done
+  else
+    echo "  (none)"
+  fi
 
-    echo ""
-    echo "Sets created by this module:"
-    if [ -s "$OWNED" ]; then
-        own_list | while read -r n; do
-            [ -z "$n" ] && continue
-            if "$IPSET" list -n 2>/dev/null | grep -qx "$n"; then
-                echo "  - $n"
-            else
-                echo "  - $n  (in manifest but not currently loaded)"
-            fi
-        done
-    else
-        echo "  (none)"
-    fi
+  echo ""
+  echo "Other sets on this device (NOT managed here, never touched):"
+  _others=$("$IPSET" list -n 2>/dev/null | grep -v '^ipsa_' | grep -vxF -f "$OWNED" 2>/dev/null)
+  if [ -n "$_others" ]; then echo "$_others" | sed 's/^/  - /'; else echo "  (none)"; fi
 
-    echo ""
-    echo "Other sets on this device (NOT managed here, never touched):"
-    _others=$("$IPSET" list -n 2>/dev/null | grep -vxF -f "$OWNED" 2>/dev/null)
-    if [ -n "$_others" ]; then
-        echo "$_others" | sed 's/^/  - /'
-    else
-        echo "  (none)"
-    fi
-
-    echo ""
-    echo "Active dynamic rules (from $RULES):"
-    if [ -s "$RULES" ]; then
-        sed 's/^/  /' "$RULES"
-    else
-        echo "  (none)"
-    fi
+  echo ""
+  echo "Your rules (from $RULES):"
+  if [ -s "$RULES" ]; then sed 's/^/  /' "$RULES"; else echo "  (none)"; fi
+  _rej=$(cat "$RUN"/adv_rejected.* 2>/dev/null)
+  if [ -n "$_rej" ]; then echo ""; echo "Rules the kernel refused (not active):"; echo "$_rej" | sed 's/^/  /'; fi
+  _skp=$(cut -d'|' -f2- "$RUN"/adv_skipped.* 2>/dev/null | sort -u)
+  if [ -n "$_skp" ]; then echo ""; echo "Rules whose set is missing (not active):"; echo "$_skp" | sed 's/^/  /'; fi
+  return 0
 }
 
 cmd_list() {
-    if [ -n "${1:-}" ]; then
-        valid_setname "$1" || die "invalid set name"
-        "$IPSET" list "$1" || die "set '$1' does not exist"
-    else
-        names=$("$IPSET" list -n 2>/dev/null)
-        if [ -z "$names" ]; then
-            echo "(no sets defined)"
-            return 0
-        fi
-        for n in $names; do
-            count=$("$IPSET" list "$n" 2>/dev/null | grep "^Number of entries:" | awk '{print $NF}')
-            type=$("$IPSET" list "$n" 2>/dev/null | grep "^Type:" | awk '{print $2}')
-            echo "$n  type=$type  entries=$count"
-        done
+  if [ -n "${1:-}" ]; then
+    valid_setname "$1" || die "invalid set name"
+    "$IPSET" list "$1" || die "set '$1' does not exist"
+  else
+    # The module's own ipsa_* sets are managed with ctl.sh, not listed here.
+    names=$("$IPSET" list -n 2>/dev/null | grep -v '^ipsa_')
+    if [ -z "$names" ]; then
+      echo "(no sets defined)"
+      return 0
     fi
+    for n in $names; do
+      _hdr=$("$IPSET" list -t "$n" 2>/dev/null)
+      count=$(echo "$_hdr" | sed -n 's/^Number of entries: *//p')
+      type=$(echo "$_hdr" | sed -n 's/^Type: *//p')
+      echo "$n  type=$type  entries=$count"
+    done
+  fi
 }
 
 cmd_create() {
-    name="${1:-}"; type="${2:-hash:ip}"; family="${3:-}"
-    valid_setname "$name" || die "invalid set name (use letters/digits/underscore, max 31 chars)"
-    valid_settype "$type" || die "unsupported type '$type' (see: ipctl.sh types)"
-    extra=""
-    if [ -n "$family" ]; then
-        valid_family "$family" || die "invalid family '$family' (use inet or inet6)"
-        # bitmap:* and hash:mac have no address family to speak of
-        case "$type" in
-            bitmap:*|hash:mac) die "type '$type' does not take a family" ;;
-        esac
-        extra="family $family"
-    fi
-    "$IPSET" create "$name" "$type" $extra 2>&1 || die "failed to create set"
-    own_add "$name"
-    log "created set $name ($type${extra:+ $extra})"
-    cmd_save
-    echo "OK: created '$name' ($type)"
+  name="${1:-}"; type="${2:-}"; family="${3:-}"
+  [ -n "$type" ] || type=hash:ip
+  valid_setname "$name" || die "invalid set name (use letters/digits/underscore, max 31 chars)"
+  is_managed "$name" && die "names starting with ipsa_ are reserved for the module"
+  valid_settype "$type" || die "unsupported type '$type' (see: ipctl.sh types)"
+  extra=""
+  if [ -n "$family" ]; then
+    valid_family "$family" || die "invalid family '$family' (use inet or inet6)"
+    case "$type" in
+      bitmap:*|hash:mac|list:set) die "type '$type' does not take a family" ;;
+    esac
+    extra="family $family"
+  fi
+  need_lock
+  # shellcheck disable=SC2086
+  "$IPSET" create "$name" "$type" $extra 2>&1 || die "failed to create set"
+  own_add "$name"
+  log_info "ipctl: created set $name ($type${extra:+ $extra})"
+  user_sets_save
+  echo "OK: created '$name' ($type)"
 }
 
 cmd_destroy() {
-    name="${1:-}"
-    valid_setname "$name" || die "invalid set name"
-    # refuse to destroy a set that still has an active rule - drop the rule first
-    if grep -q "|$name|" "$RULES" 2>/dev/null; then
-        die "set '$name' still has active firewall rule(s); run rule-del first (see: rules)"
+  name="${1:-}"
+  valid_setname "$name" || die "invalid set name"
+  is_managed "$name" && die "'$name' is managed by the module"
+  if grep -q "^[A-Z]*|$name|" "$RULES" 2>/dev/null; then
+    die "set '$name' still has active firewall rule(s); run rule-del first (see: rules)"
+  fi
+  own_has "$name" || die "'$name' was not created by this module - refusing to destroy it. Use ipset directly if you really mean to."
+  need_lock
+  "$IPSET" destroy "$name" 2>&1 || die "failed to destroy set (does it exist? is it used by another rule or list:set?)"
+  own_remove "$name"
+  log_info "ipctl: destroyed set $name"
+  user_sets_save
+  echo "OK: destroyed '$name'"
+}
+
+_members() { # add|del <set> <entries...>
+  _m_op=$1; name="${2:-}"
+  valid_setname "$name" || die "invalid set name"
+  is_managed "$name" && die "'$name' is managed by the module - use ctl.sh allow/block instead"
+  shift 2 2>/dev/null
+  [ $# -ge 1 ] || die "nothing to $_m_op - usage: $_m_op <set> <entry> [entry ...]"
+  for e in "$@"; do
+    valid_entry "$e" || die "invalid entry '$e' (unsupported characters, or too long)"
+  done
+  need_lock
+  _n=0
+  for e in "$@"; do
+    if [ "$_m_op" = "add" ]; then
+      "$IPSET" add "$name" "$e" 2>&1 || { [ "$_n" -gt 0 ] && user_sets_save; die "failed to add '$e' (set may not exist, wrong format for this set type, or duplicate entry)"; }
+    else
+      "$IPSET" del "$name" "$e" 2>&1 || { [ "$_n" -gt 0 ] && user_sets_save; die "failed to remove '$e' (was it a member?)"; }
     fi
-    own_has "$name" || die "'$name' was not created by this module - refusing to destroy it. Use ipset directly if you really mean to."
-    "$IPSET" destroy "$name" 2>&1 || die "failed to destroy set (does it exist?)"
-    own_remove "$name"
-    log "destroyed set $name"
-    cmd_save
-    echo "OK: destroyed '$name'"
-}
-
-cmd_add() {
-    name="${1:-}"
-    valid_setname "$name" || die "invalid set name"
-    shift 2>/dev/null
-    [ $# -ge 1 ] || die "nothing to add - usage: add <set> <entry> [entry ...]"
-    # Several entries per call, and ONE save at the end. cmd_save
-    # rewrites the whole state file, so saving inside the loop made
-    # bulk loading quadratic - a thousand addresses meant a thousand
-    # full dumps.
-    _n=0
-    for e in "$@"; do
-        valid_entry "$e" || die "invalid entry '$e' (unsupported characters, or too long)"
-        "$IPSET" add "$name" "$e" 2>&1 || die "failed to add '$e' (set may not exist, or duplicate entry)"
-        _n=$((_n + 1))
-    done
-    log "added $_n entr(y/ies) to $name"
-    cmd_save
+    _n=$((_n + 1))
+  done
+  user_sets_save
+  if [ "$_m_op" = "add" ]; then
+    log_info "ipctl: added $_n entr(y/ies) to $name"
     echo "OK: added $_n entr(y/ies) to '$name'"
-}
-
-cmd_del() {
-    name="${1:-}"
-    valid_setname "$name" || die "invalid set name"
-    shift 2>/dev/null
-    [ $# -ge 1 ] || die "nothing to remove - usage: del <set> <entry> [entry ...]"
-    _n=0
-    for e in "$@"; do
-        valid_entry "$e" || die "invalid entry '$e' (unsupported characters, or too long)"
-        "$IPSET" del "$name" "$e" 2>&1 || die "failed to remove '$e' (was it a member?)"
-        _n=$((_n + 1))
-    done
-    log "removed $_n entr(y/ies) from $name"
-    cmd_save
+  else
+    log_info "ipctl: removed $_n entr(y/ies) from $name"
     echo "OK: removed $_n entr(y/ies) from '$name'"
+  fi
 }
 
 cmd_test() {
-    name="${1:-}"; ip="${2:-}"
-    valid_setname "$name" || die "invalid set name"
-    valid_entry "$ip" || die "invalid entry '$ip' (unsupported characters, or too long)"
-    "$IPSET" test "$name" "$ip"
+  name="${1:-}"; ip="${2:-}"
+  valid_setname "$name" || die "invalid set name"
+  valid_entry "$ip" || die "invalid entry '$ip' (unsupported characters, or too long)"
+  "$IPSET" test "$name" "$ip"
+}
+
+_rule_args() { # sets: name chain dir target uid key
+  name="${1:-}"; chain="${2:-}"; dir="${3:-}"; target="${4:-}"; uid="${5:-}"
+  [ -n "$chain" ] || chain=OUTPUT
+  [ -n "$dir" ] || dir=dst
+  [ -n "$target" ] || target=DROP
+  valid_setname "$name" || die "invalid set name"
+  valid_chain "$chain" || die "invalid chain (INPUT/OUTPUT/FORWARD)"
+  valid_dir "$dir" || die "invalid direction (src/dst, or e.g. dst,dst)"
+  valid_target "$target" || die "invalid target (DROP/ACCEPT/REJECT/RETURN)"
+  if [ -n "$uid" ]; then
+    echo "$uid" | grep -Eq '^[0-9]+$' || die "invalid uid '$uid'"
+  fi
+  key="${chain}|${name}|${dir}|${target}"
+  [ -n "$uid" ] && key="${key}|${uid}"
+  return 0
+}
+
+# Is this rule in the live chain of every family it belongs to?
+_rule_live() {
+  _rl_sf=$(set_family "$name") || return 1
+  case "$chain" in OUTPUT) _rl_ch=IPSA_ADV_OUT ;; INPUT) _rl_ch=IPSA_ADV_IN ;; *) _rl_ch=IPSA_ADV_FWD ;; esac
+  _rl_o=""
+  [ -n "$uid" ] && _rl_o="-m owner --uid-owner $uid"
+  _rl_seen=0
+  for _rl_f in 4 6; do
+    [ "$_rl_sf" = "any" ] || [ "$_rl_sf" = "$_rl_f" ] || continue
+    case "$(fam_state "$_rl_f")" in ok | ok-drop | off) : ;; *) continue ;; esac
+    [ "$_rl_f" = "6" ] && [ "$IPV6" != "1" ] && continue
+    # shellcheck disable=SC2086
+    ipt "$_rl_f" -C "$_rl_ch" $_rl_o -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null || return 1
+    _rl_seen=1
+  done
+  [ "$_rl_seen" = "1" ]
 }
 
 cmd_rule_add() {
-    name="${1:-}"; chain="${2:-OUTPUT}"; dir="${3:-dst}"; target="${4:-DROP}"; uid="${5:-}"
-    valid_setname "$name" || die "invalid set name"
-    valid_chain "$chain" || die "invalid chain (INPUT/OUTPUT/FORWARD)"
-    valid_dir "$dir" || die "invalid direction (src/dst)"
-    valid_target "$target" || die "invalid target (DROP/ACCEPT/REJECT/RETURN)"
-
-    owner_args=""
-    if [ -n "$uid" ]; then
-        echo "$uid" | grep -Eq '^[0-9]+$' || die "invalid uid '$uid'"
-        [ "$chain" = "OUTPUT" ] || die "per-app filtering (uid) only works on the OUTPUT chain - the owner match has no meaning for INPUT/FORWARD"
-        owner_args="-m owner --uid-owner $uid"
-    fi
-
-    # backward-compatible key: only grows to 5 fields when a uid is actually used,
-    # so existing rules.conf entries from before per-app support keep working unchanged
-    key="${chain}|${name}|${dir}|${target}"
-    [ -n "$uid" ] && key="${key}|${uid}"
-
-    if grep -qx "$key" "$RULES" 2>/dev/null; then
-        echo "OK: rule already active ($key)"
-        return 0
-    fi
-
-    "$IPTABLES" -C "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null
-    already_in_kernel=$?
-
-    if [ "$already_in_kernel" -ne 0 ]; then
-        "$IPTABLES" -I "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" \
-            || die "failed to insert iptables rule"
-    fi
-
-    echo "$key" >> "$RULES"
-    log "rule added: $key"
-    echo "OK: rule active -> $chain, match-set $name $dir, -j $target${uid:+ (app uid $uid)}"
+  _rule_args "$@"
+  is_managed "$name" && die "'$name' is managed by the module"
+  if [ -n "$uid" ] && [ "$chain" != "OUTPUT" ]; then
+    die "per-app filtering (uid) only works on the OUTPUT chain - the owner match has no meaning for INPUT/FORWARD"
+  fi
+  set_loaded "$name" || die "set '$name' does not exist"
+  sf=$(set_family "$name")
+  if [ "$sf" = "6" ]; then
+    v6_supported || die "'$name' is an IPv6 set, but ip6tables is not available on this device"
+    [ "$IPV6" = "1" ] || die "'$name' is an IPv6 set, but IPv6 enforcement is off (setting IPV6=0)"
+    case "$(fam_state 6)" in
+      error:*) die "'$name' is an IPv6 set, but the IPv6 firewall is not working on this device ($(fam_state 6 | sed 's/^error://'))" ;;
+    esac
+  fi
+  if grep -qx "$key" "$RULES" 2>/dev/null; then
+    echo "OK: rule already active ($key)"
+    return 0
+  fi
+  need_lock
+  cp -f "$RULES" "$RULES.bak" 2>/dev/null
+  echo "$key" >> "$RULES"
+  rules_apply >/dev/null 2>&1
+  # Confirmed, not assumed: the rule must be in the chain now.
+  if ! _rule_live; then
+    mv -f "$RULES.bak" "$RULES"
+    rules_apply >/dev/null 2>&1
+    die "the kernel refused this rule (set type and direction may not match) - not saved"
+  fi
+  rm -f "$RULES.bak"
+  log_info "ipctl: rule added: $key"
+  echo "OK: rule active -> $chain, match-set $name $dir, -j $target${uid:+ (app uid $uid)}"
+  [ "$ENABLED" = "1" ] || echo "    (the module is switched off - the rule takes effect when it is on)"
 }
 
 cmd_rule_del() {
-    name="${1:-}"; chain="${2:-OUTPUT}"; dir="${3:-dst}"; target="${4:-DROP}"; uid="${5:-}"
-    valid_setname "$name" || die "invalid set name"
-    valid_chain "$chain" || die "invalid chain"
-    valid_dir "$dir" || die "invalid direction"
-    valid_target "$target" || die "invalid target"
-
-    owner_args=""
-    if [ -n "$uid" ]; then
-        echo "$uid" | grep -Eq '^[0-9]+$' || die "invalid uid '$uid'"
-        owner_args="-m owner --uid-owner $uid"
-    fi
-
-    key="${chain}|${name}|${dir}|${target}"
-    [ -n "$uid" ] && key="${key}|${uid}"
-
-    if "$IPTABLES" -C "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null; then
-        "$IPTABLES" -D "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>&1
-    fi
-    grep -vx "$key" "$RULES" > "${RULES}.tmp" 2>/dev/null
-    mv "${RULES}.tmp" "$RULES"
-    log "rule removed: $key"
-    echo "OK: rule removed -> $key"
+  _rule_args "$@"
+  need_lock
+  grep -vx "$key" "$RULES" > "$RULES.tmp" 2>/dev/null
+  mv -f "$RULES.tmp" "$RULES"
+  rules_apply >/dev/null 2>&1
+  log_info "ipctl: rule removed: $key"
+  echo "OK: rule removed -> $key"
 }
 
 cmd_apps() {
-    # lists installed packages with their Android UID, for per-app rule filtering
-    pm list packages -U 2>/dev/null | awk -F'[: ]+' 'NF>=4 {print $2"|"$4}' | sort
+  pm list packages -U 2>/dev/null | awk -F'[: ]+' 'NF>=4 {print $2"|"$4}' | sort
 }
 
 cmd_rules() {
-    if [ -s "$RULES" ]; then
-        cat "$RULES"
-    else
-        echo "(no dynamic rules active)"
-    fi
+  if [ -s "$RULES" ]; then cat "$RULES"; else echo "(no dynamic rules active)"; fi
 }
 
-# ---- threat feed: FireHOL level1 (dshield + feodo + fullbogons + spamhaus_drop) ----
-# Managed sets use a "feed_" prefix so the WebUI can tell them apart from
-# sets you created by hand. The firewall rule for a feed set is just a
-# normal rule-add/rule-del on its name - no special-casing needed there.
-#
-# level1 bundles multiple malicious-infrastructure sources, but it also
-# includes IANA "fullbogons" ranges (RFC 6890 special-purpose blocks) meant
-# for ingress filtering at a network edge - NOT for outbound blocking on a
-# client device. Blocking these here would break the device's own LAN
-# gateway (192.168.0.0/16), carrier-grade NAT on mobile data (100.64.0.0/10),
-# loopback (127.0.0.0/8), and a large chunk of multicast/reserved space
-# (224.0.0.0/3). These are fixed, permanently-reserved ranges (they don't
-# change), so they're excluded by exact-line match below - the malicious
-# entries from every source (dshield/feodo/spamhaus_drop) are unaffected.
-
-FEED_URL="https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/firehol_level1.netset"
-FEED_SET="feed_firehol_level1"
-FEED_META="$DATA/feed_firehol_level1.meta"
-
+# ---- threat feed (compatibility with the r9 WebUI) ----
+# The feed is now the firehol-level1 source of the catalog (ctl.sh sources).
+# These two commands keep the old WebUI's "Threat Feeds" card working.
 cmd_feed_update() {
-    DL=""
-    if command -v curl >/dev/null 2>&1; then DL="curl -fsSL"
-    elif command -v wget >/dev/null 2>&1; then DL="wget -qO-"
-    fi
-    [ -z "$DL" ] && die "neither curl nor wget found on this device - cannot download feed"
-
-    echo "Fetching $FEED_URL ..."
-    raw=$($DL "$FEED_URL" 2>&1) || die "download failed: $raw"
-    [ -z "$raw" ] && die "download returned empty response"
-
-    # fixed IANA special-purpose ranges (RFC 6890) - never change, safe to
-    # hardcode. Excluded so this feed can never block the device's own LAN
-    # gateway, carrier NAT, loopback, or reserved/multicast space.
-    exclude_file="$DATA/feed_bogon_exclude.tmp"
-    cat > "$exclude_file" << 'BOGONS'
-0.0.0.0/8
-10.0.0.0/8
-100.64.0.0/10
-127.0.0.0/8
-169.254.0.0/16
-172.16.0.0/12
-192.0.0.0/24
-192.0.2.0/24
-192.168.0.0/16
-198.18.0.0/15
-198.51.100.0/24
-203.0.113.0/24
-224.0.0.0/3
-BOGONS
-
-    # strip comments/trailing-comment text and blank lines, drop the fixed
-    # bogon ranges above by exact match, then sort+dedup in case the source
-    # (which merges several upstream lists) contains any overlapping entries
-    cidrs=$(echo "$raw" \
-        | sed 's/#.*//' \
-        | sed 's/[[:space:]]*$//' \
-        | grep -v '^$' \
-        | grep -vFx -f "$exclude_file" \
-        | sort -u)
-    rm -f "$exclude_file"
-
-    parsed_count=$(echo "$cidrs" | grep -c .)
-    [ "$parsed_count" -lt 1 ] && die "no CIDR entries parsed - feed format may have changed upstream"
-
-    echo "Parsed $parsed_count entries from source (after bogon exclusion + dedup). Building set..."
-    tmp="${FEED_SET}_tmp"
-    "$IPSET" destroy "$tmp" 2>/dev/null
-    "$IPSET" create "$tmp" hash:net -exist maxelem 65536 || die "failed to create temp set"
-
-    batch="$DATA/feed_batch.tmp"
-    : > "$batch"
-    echo "$cidrs" | while read -r c; do
-        [ -n "$c" ] && echo "add $tmp $c -exist" >> "$batch"
-    done
-    "$IPSET" restore -exist < "$batch" 2>&1 || die "ipset restore failed - batch may contain a malformed entry, or the upstream feed format changed"
-    rm -f "$batch"
-
-    # guard against a partial/failed restore silently wiping the live feed:
-    # ipset restore can exit 0 while having applied only some of the batch
-    # (or the tmp set can simply be empty if something upstream went wrong
-    # earlier without tripping the check above) - never swap an empty/near-
-    # empty result over a working set. 100 is a sanity floor well below any
-    # real firehol_level1 pull, just catching "basically nothing loaded".
-    tmp_count=$("$IPSET" list "$tmp" 2>/dev/null | grep "^Number of entries:" | awk '{print $NF}')
-    [ -z "$tmp_count" ] && tmp_count=0
-    if [ "$tmp_count" -lt 100 ]; then
-        "$IPSET" destroy "$tmp" 2>/dev/null
-        die "ipset restore produced only $tmp_count entries (expected thousands) - aborting, existing feed left untouched"
-    fi
-
-    # atomic swap: the old set's members are fully discarded here (destroyed
-    # under the tmp name after swap) - every update is a clean full
-    # replacement, never a merge of old+new entries
-    if "$IPSET" list -n 2>/dev/null | grep -qx "$FEED_SET"; then
-        "$IPSET" swap "$tmp" "$FEED_SET" || die "swap failed"
-        "$IPSET" destroy "$tmp"
-    else
-        "$IPSET" rename "$tmp" "$FEED_SET" || die "rename failed"
-    fi
-    own_add "$FEED_SET"
-
-    # report the real, de-duplicated member count from the live set - not the
-    # raw source line count, which can be a few entries higher if the feed
-    # contains overlapping/duplicate CIDRs (ipset silently merges those)
-    real_count=$("$IPSET" list "$FEED_SET" 2>/dev/null | grep "^Number of entries:" | awk '{print $NF}')
-    [ -z "$real_count" ] && real_count=$tmp_count
-
-    echo "{\"updated\":\"$(date '+%Y-%m-%d %H:%M:%S')\",\"count\":$real_count,\"source\":\"$FEED_URL\"}" > "$FEED_META"
-    cmd_save
-    log "feed updated: $FEED_SET ($real_count entries, $parsed_count in source)"
-    echo "OK: $FEED_SET updated with $real_count entries"
+  if ! src_is_enabled firehol-level1; then
+    sh "$MODDIR/ctl.sh" sources enable firehol-level1 >/dev/null 2>&1
+    load_settings
+  fi
+  update_running && die "a list update is already running - try again in a moment"
+  sh "$MODDIR/ctl.sh" _update manual firehol-level1
+  [ "$(meta_get firehol-level1 status)" = "ok" ] || die "$(meta_get firehol-level1 error)"
+  echo "OK: firehol-level1 updated with $(meta_get firehol-level1 count) entries"
 }
 
 cmd_feed_status() {
-    if [ -f "$FEED_META" ]; then
-        cat "$FEED_META"
-    else
-        echo "(never updated)"
-    fi
+  _fs_u=$(meta_get firehol-level1 updated)
+  if [ -z "$(meta_get firehol-level1 count)" ]; then echo "(never updated)"; return 0; fi
+  _fs_d=$(date -d "@${_fs_u:-0}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null)
+  [ "${_fs_u:-0}" = "0" ] && _fs_d="unknown"
+  echo "{\"updated\":\"$_fs_d\",\"count\":$(meta_get firehol-level1 count),\"source\":\"$(src_field firehol-level1 6)\",\"status\":\"$(meta_get firehol-level1 status)\"}"
 }
 
 cmd_save() {
-    # `ipset save` with no argument dumps EVERY set on the device.
-    # Save ours one at a time instead, so the state file can never
-    # pick up a set belonging to another app - which would then be
-    # restored at boot, and destroyed by flush-all, as if it were ours.
-    : > "${STATE}.tmp"
-    own_list | while read -r n; do
-        [ -z "$n" ] && continue
-        "$IPSET" save "$n" >> "${STATE}.tmp" 2>/dev/null
-    done
-    mv "${STATE}.tmp" "$STATE"
-    log "state saved ($(wc -l < "$STATE" 2>/dev/null || echo 0) lines, $(own_list | grep -c . 2>/dev/null || echo 0) owned set(s))"
+  need_lock
+  user_sets_save
+  echo "OK: saved $(own_list | grep -c .) set(s)"
 }
 
 cmd_restore() {
-    echo "== restore run: $(date '+%Y-%m-%d %H:%M:%S') =="
-
-    if [ -s "$STATE" ]; then
-        entries=$(grep -c '^add ' "$STATE" 2>/dev/null)
-        sets=$(grep -c '^create ' "$STATE" 2>/dev/null)
-        echo "Restoring $sets set(s), $entries entr(y/ies) from $STATE"
-        # -exist: a set may already be present (an earlier boot script,
-        # a manual create, a re-run of this command). Without it, ipset
-        # restore aborts on the first collision and everything after
-        # that line is silently not restored.
-        out=$("$IPSET" restore -exist < "$STATE" 2>&1)
-        [ -n "$out" ] && echo "$out"
-        echo "Sets restored."
-        log "sets restored from $STATE"
-    else
-        echo "No saved sets found ($STATE empty or missing) - nothing to restore."
-        log "no saved state to restore"
-    fi
-
-    if [ -s "$RULES" ]; then
-        count=0
-        while IFS='|' read -r chain name dir target uid; do
-            [ -z "$chain" ] && continue
-            owner_args=""
-            [ -n "$uid" ] && owner_args="-m owner --uid-owner $uid"
-            "$IPTABLES" -C "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null
-            if [ $? -ne 0 ]; then
-                "$IPTABLES" -I "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>&1
-                echo "Rule restored: $chain, match-set $name $dir, -j $target${uid:+ (app uid $uid)}"
-                log "rule restored: $chain|$name|$dir|$target${uid:+|$uid}"
-            else
-                echo "Rule already active: $chain, match-set $name $dir, -j $target${uid:+ (app uid $uid)}"
-            fi
-            count=$((count + 1))
-        done < "$RULES"
-        echo "$count rule(s) checked/restored."
-    else
-        echo "No saved rules found - nothing to reapply."
-    fi
-
-    echo "== restore complete =="
+  need_lock
+  echo "== restore run: $(date '+%Y-%m-%d %H:%M:%S') =="
+  if [ -s "$STATE" ]; then
+    echo "Restoring $(grep -c '^create ' "$STATE") set(s), $(grep -c '^add ' "$STATE") entr(y/ies)"
+    if user_sets_restore; then echo "Sets restored."; else echo "Some sets could not be restored (see log)."; fi
+  else
+    echo "No saved sets - nothing to restore."
+  fi
+  if rules_apply; then echo "Rules applied (IPv4: $(fam_state 4), IPv6: $(fam_state 6))."
+  else echo "Rules: IPv4 could not be applied (see log)."; fi
+  echo "== restore complete =="
 }
 
 cmd_types() {
-    echo "Set types supported by this script:"
-    echo "  bitmap:ip        bitmap:ip,mac    bitmap:port"
-    echo "  hash:ip          hash:mac         hash:ip,mac"
-    echo "  hash:net         hash:net,net     hash:net,port"
-    echo "  hash:net,port,net                 hash:net,iface"
-    echo "  hash:ip,port     hash:ip,port,ip  hash:ip,port,net"
-    echo "  hash:ip,mark     list:set"
-    echo ""
-    echo "Usage: create <name> [type] [inet|inet6]     (default type: hash:ip)"
-    echo "Examples:"
-    echo "  create blocklist hash:net"
-    echo "  create v6block   hash:net inet6"
-    echo "  create devices   hash:mac"
-    echo ""
-    echo "Which types actually work depends on the kernel - run 'status'."
+  echo "Set types supported by this script:"
+  echo "  bitmap:ip        bitmap:ip,mac    bitmap:port"
+  echo "  hash:ip          hash:mac         hash:ip,mac"
+  echo "  hash:net         hash:net,net     hash:net,port"
+  echo "  hash:net,port,net                 hash:net,iface"
+  echo "  hash:ip,port     hash:ip,port,ip  hash:ip,port,net"
+  echo "  hash:ip,mark     list:set"
+  echo ""
+  echo "Usage: create <n> [type] [inet|inet6]     (default type: hash:ip)"
+  echo "Examples:"
+  echo "  create blocklist hash:net"
+  echo "  create v6block   hash:net inet6"
+  echo "  create services  hash:ip,port        then: add services 1.2.3.4,tcp:443"
+  echo "                                       and:  rule-add services OUTPUT dst,dst"
+  echo ""
+  echo "Which types actually work depends on the kernel - run 'status'."
 }
 
 cmd_bootlog() {
-    if [ -s "$DATA/service.log" ]; then
-        cat "$DATA/service.log"
-    else
-        echo "(no boot log yet - reboot the device once to generate it)"
-    fi
+  if [ -s "$BOOTLOG" ]; then cat "$BOOTLOG"; else echo "(no boot log yet - reboot the device once to generate it)"; fi
 }
 
 cmd_bootlog_clear() {
-    : > "$DATA/service.log"
-    log "boot log cleared manually"
-    echo "OK: boot log cleared"
+  : > "$BOOTLOG"
+  log_info "ipctl: boot log cleared manually"
+  echo "OK: boot log cleared"
 }
 
 cmd_flush_all() {
-    if [ -s "$RULES" ]; then
-        while IFS='|' read -r chain name dir target uid; do
-            [ -z "$chain" ] && continue
-            owner_args=""
-            [ -n "$uid" ] && owner_args="-m owner --uid-owner $uid"
-            "$IPTABLES" -D "$chain" $owner_args -m set --match-set "$name" "$dir" -j "$target" 2>/dev/null
-        done < "$RULES"
-    fi
-    : > "$RULES"
-    _destroyed=0
-    own_list | while read -r n; do
-        [ -z "$n" ] && continue
-        "$IPSET" destroy "$n" 2>/dev/null
-    done
-    _destroyed=$(own_list | grep -c . 2>/dev/null || echo 0)
-    : > "$OWNED"
-    cmd_save
-    log "flush-all executed ($_destroyed set(s))"
-    echo "OK: removed $_destroyed set(s) created by this module, and all its rules"
-    echo "    (sets created by other apps were left alone)"
+  need_lock
+  # Rules first: the kernel refuses to destroy a set a rule still uses.
+  : > "$RULES"
+  rules_apply >/dev/null 2>&1
+  _destroyed=0
+  for n in $(own_list); do
+    "$IPSET" destroy "$n" 2>/dev/null && _destroyed=$((_destroyed + 1))
+  done
+  : > "$OWNED"
+  : > "$STATE"
+  log_info "ipctl: flush-all ($_destroyed set(s))"
+  echo "OK: removed $_destroyed set(s) created by this module, and all its rules"
+  echo "    (sets created by other apps were left alone)"
 }
 
-# ---- dispatch ----
-
 case "${1:-}" in
-    status)    cmd_status ;;
-    list)      cmd_list "${2:-}" ;;
-    create)    cmd_create "${2:-}" "${3:-}" "${4:-}" ;;
-    types)     cmd_types ;;
-    owned)     own_list ;;
-    destroy)   cmd_destroy "${2:-}" ;;
-    add)       shift; cmd_add "$@" ;;
-    del)       shift; cmd_del "$@" ;;
-    test)      cmd_test "${2:-}" "${3:-}" ;;
-    rule-add)  cmd_rule_add "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
-    rule-del)  cmd_rule_del "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
-    apps)      cmd_apps ;;
-    rules)     cmd_rules ;;
-    bootlog)   cmd_bootlog ;;
-    bootlog-clear) cmd_bootlog_clear ;;
-    feed-update) cmd_feed_update ;;
-    feed-status) cmd_feed_status ;;
-    save)      cmd_save ;;
-    restore)   cmd_restore ;;
-    flush-all) cmd_flush_all ;;
-    *)
-        echo "Usage: ipctl.sh {status|types|list|owned|create|destroy|add|del|test|"
-        echo "                 rule-add|rule-del|rules|apps|bootlog|bootlog-clear|"
-        echo "                 feed-update|feed-status|save|restore|flush-all}"
-        exit 1
-        ;;
+  status)    cmd_status ;;
+  list)      cmd_list "${2:-}" ;;
+  create)    cmd_create "${2:-}" "${3:-}" "${4:-}" ;;
+  types)     cmd_types ;;
+  owned)     own_list ;;
+  destroy)   cmd_destroy "${2:-}" ;;
+  add)       shift; _members add "$@" ;;
+  del)       shift; _members del "$@" ;;
+  test)      cmd_test "${2:-}" "${3:-}" ;;
+  rule-add)  cmd_rule_add "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
+  rule-del)  cmd_rule_del "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
+  apps)      cmd_apps ;;
+  rules)     cmd_rules ;;
+  bootlog)   cmd_bootlog ;;
+  bootlog-clear) cmd_bootlog_clear ;;
+  feed-update) cmd_feed_update ;;
+  feed-status) cmd_feed_status ;;
+  save)      cmd_save ;;
+  restore)   cmd_restore ;;
+  flush-all) cmd_flush_all ;;
+  *)
+    echo "Usage: ipctl.sh {status|types|list|owned|create|destroy|add|del|test|"
+    echo "                 rule-add|rule-del|rules|apps|bootlog|bootlog-clear|"
+    echo "                 feed-update|feed-status|save|restore|flush-all}"
+    exit 1
+    ;;
 esac

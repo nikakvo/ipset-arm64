@@ -2,6 +2,82 @@
 
 All notable changes to this module are documented here.
 
+## v7.24-r10
+
+The biggest release so far: the module becomes an IP blocklist with a new core, IPv6, a choice of lists, a new WebUI and a Help page. Settings, your sets and your rules carry over from r9 automatically.
+
+### Blocking
+
+* **IPv6 is filtered too.** Every rule now exists for iptables and ip6tables alike. Until r9 only IPv4 was ever blocked — an IPv6 set could be created, but no rule could use it
+* The module keeps its rules in **its own chains** (`IPSA_OUT`, `IPSA_IN`, `IPSA_FWD`), linked at the top of `OUTPUT`, `INPUT` and `FORWARD`, instead of inserting rules straight into Android's chains
+* Rules are written with one `iptables-restore` per family, checked by the kernel in test mode first. A rule the kernel refuses is left out and reported; it can no longer replace a working chain or take the phone offline
+* **Special-purpose ranges are never blocked**: loopback, private LAN, carrier NAT (`100.64/10`), link-local, multicast. Every list entry overlapping them is removed — before, only exact line matches were, so a differently aggregated list could have cut the phone off from its own router
+* Outgoing connections to a blocked address are **refused at once** (TCP reset, ICMP for the rest), or dropped silently if you prefer. The reset is not subject to the kernel's ICMP rate limit, which could delay a refusal on IPv6 by a second
+* A **watchdog** checks every 10 seconds and repairs the links that netd removes when it starts or restarts; repairs are counted on the Dashboard. Before, rules were restored once at boot and never again
+* Settings changes, list edits and pauses are applied by the watchdog within 10 seconds, and it retries failures with a growing delay instead of every tick
+* Every change is serialised by a lock with safe takeover of a lock left by a killed process — two taps in the WebUI can no longer corrupt the saved state
+
+### Blocklists
+
+* A catalog of lists: **FireHOL Level 1, 2, 3, 4, Web client** (IPv4) and **Spamhaus DROPv6** (IPv6). Level 1 and DROPv6 are preselected
+* **A direction for each list** — Outgoing, Incoming or Both — and for your own blocklist. Incoming lets the replies to the phone's own connections through, so it blocks only unsolicited traffic
+* Every list has its own set, joined into per-direction aggregates: adding, removing, updating or redirecting a list never touches the firewall rules or resets their counters
+* Each list is cached. A failed download, or one with far fewer entries than expected, keeps the last good copy — a list never shrinks by accident
+* **Nothing is downloaded until you ask.** Automatic update off / daily / weekly, only when you switch it on; the Dashboard shows when the next update is due and how the last one went, kept across reboots
+* Automatic updates run inside the watchdog, detached, from two minutes after boot, with at most one attempt an hour per list (as Spamhaus asks)
+* **View** any downloaded list, search it, and let a network through
+* The r9 threat feed (`feed_firehol_level1`) becomes the FireHOL Level 1 list. Its entries seed the cache, so protection continues immediately after the update, even offline; the old set and its rules are removed
+
+### Your lists and tools
+
+* **Your blocklist and allowlist**, IPv4 and IPv6, as `ip-blocklist.txt` / `ip-allowlist.txt`, mirrored to `/sdcard/ipset-arm64/` — edit them with any app, applied within 10 seconds. The allowlist always wins
+* **Check an address**: which lists hold it, in which direction, and the verdict
+* **Test connection**: a real TCP connection from the phone to any address and port; whether this module stopped it is read from its own rule counters
+* **Pause** for 15 minutes, 1 hour or 4 hours; a reboot also ends a pause
+* A master switch that turns everything off without uninstalling
+
+### DNSCrypt
+
+* If dnscrypt-proxy-android-arm64-only is installed, its bootstrap resolvers, connectivity probe and pinned `[static]` servers are read from its `dnscrypt-proxy.toml` and never blocked. A resolver switch in the DNSCrypt WebUI is followed within a minute. Can be switched off in System
+
+### WebUI
+
+* Rebuilt: **Dashboard**, **Lists**, **Tools**, **System**, **Log**, in the original ipset-arm64 colours and logo
+* A banner that says whether the phone is protected, and why not
+* Packets blocked in and out since the rules were applied
+* Every button shows it was pressed and ignores repeated taps while its command runs
+* The page no longer waits for the web font: it opens at once without a network
+* **Help**: a full guide to every screen, setting and command
+* Advanced sets and rules are still there (Tools → Advanced), with an app search for per-app rules
+
+### Advanced sets and rules (ipctl.sh)
+
+* Rules run in the module's chains for IPv4 or IPv6, depending on the set's family
+* A rule is saved only after it is confirmed in the kernel; one the kernel refuses is rolled back with the reason
+* Entries with ports and interfaces (`1.2.3.4,tcp:443`, `10.0.0.0/8,wlan0`) were rejected by the input check since r9 — including the README's own examples. Fixed
+* Two-dimensional matches (`dst,dst`) for sets such as `hash:ip,port`
+* Saving never deletes a set from disk that failed to load at boot; restore retries set by set, so one broken set costs only itself
+* `rule-del` from the WebUI; deleting a set offers to delete its rules too
+* `RETURN` now means "no decision here — continue to the lists"
+* Names starting with `ipsa_` are reserved for the module
+
+### Other
+
+* New `ctl.sh` with `key=value` output for everything the WebUI does; `ipctl.sh` stays compatible
+* Sets are loaded in `post-fs-data`; rules are added once netd has finished starting
+* Log lines written before the clock is set show `boot+Ns` instead of a 1970 date; the log is trimmed automatically
+* The watchdog stops quietly when the phone shuts down
+* `module.prop` no longer calls the binary statically linked (it is linked against libmnl statically, bionic dynamically)
+* Magisk-compatible installer (`META-INF`)
+
+### Upgrading from r9
+
+* Reboot after flashing. Your advanced sets and rules are kept and move into the new chains
+* Open **Lists** once and tap **Update lists** to download the current lists (the old feed's copy is used until then)
+* Rules that r9 inserted directly into `OUTPUT`/`INPUT` are removed on the first start
+
+---
+
 ## v7.24-r9
 
 **Fixed**
