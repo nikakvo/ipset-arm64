@@ -136,7 +136,7 @@ All 16 set types are supported (`hash:net`, `hash:ip,port`, `hash:net,iface`, `b
 
 ## With DNSCrypt, a VPN, or another firewall
 
-* **DNSCrypt module**: its bootstrap resolvers, connectivity probe and pinned servers are read from its `dnscrypt-proxy.toml` and never blocked, so a list can never take DNS away from the phone. Switching resolvers in the DNSCrypt WebUI is followed within a minute.
+* **[DNSCrypt](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only) module**: its bootstrap resolvers, connectivity probe and pinned servers are read from its `dnscrypt-proxy.toml` and never blocked, so a list can never take DNS away from the phone. Switching resolvers in the DNSCrypt WebUI is followed within a minute.
 * **VPN**: apps' traffic passes the rules with its real destination before it enters the tunnel, so blocking keeps working with a VPN on.
 * **AFWall+ and others**: the module only adds its own chains and three links; other firewalls' rules are not changed.
 
