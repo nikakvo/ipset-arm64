@@ -9,7 +9,7 @@
 
 IP-level blocklists for Android. The module loads lists of known-bad networks — botnets, malware control servers, hijacked address space — into the kernel with **ipset**, and blocks traffic to and from them with **iptables** and **ip6tables**. Everything is controlled from a WebUI in your root manager.
 
-DNS blocking stops a name from being looked up; it cannot stop an app that connects to a **hard-coded IP address**. This module can. It is the companion of [dnscrypt-proxy-android-arm64-only](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only), and the two work together.
+DNS blocking stops a name from being looked up; it cannot stop an app that connects to a **hard-coded IP address**. This module can. It is part of a set with [DNSCrypt Proxy Arm64](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only) and [VPN Hotspot Arm64](https://github.com/nikakvo/vpn-hotspot-arm64) — see [The networking set](#the-networking-set).
 
 <img width="300" alt="ipset-arm64 WebUI" src="https://raw.githubusercontent.com/nikakvo/ipset-arm64/main/ipset-arm64.jpg" />
 
@@ -137,8 +137,33 @@ All 16 set types are supported (`hash:net`, `hash:ip,port`, `hash:net,iface`, `b
 ## With DNSCrypt, a VPN, or another firewall
 
 * **[DNSCrypt](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only) module**: its bootstrap resolvers, connectivity probe and pinned servers are read from its `dnscrypt-proxy.toml` and never blocked, so a list can never take DNS away from the phone. Switching resolvers in the DNSCrypt WebUI is followed within a minute.
-* **VPN**: apps' traffic passes the rules with its real destination before it enters the tunnel, so blocking keeps working with a VPN on.
+* **VPN**: apps' traffic passes the rules with its real destination before it enters the tunnel, so blocking keeps working with a VPN on. Hotspot devices sent through the VPN by [VPN Hotspot Arm64](https://github.com/nikakvo/vpn-hotspot-arm64) are filtered before they enter the tunnel too.
 * **AFWall+ and others**: the module only adds its own chains and three links; other firewalls' rules are not changed.
+
+## The networking set
+
+Three modules built to work together — each one works on its own, and each adds a layer for the phone **and everyone on its hotspot**:
+
+| | Module | What it adds |
+|---|---|---|
+| 🟢 | [DNSCrypt Proxy Arm64](https://github.com/nikakvo/dnscrypt-proxy-android-arm64-only) | Encrypted DNS with ad / tracker blocklists — for the phone and for hotspot devices, even those with their own DNS server set |
+| 🔵 | **ipset-arm64** *(this module)* | IP blocklists (FireHOL, Spamhaus) in the kernel — stops apps and devices that connect to hard-coded IP addresses, which DNS blocking cannot see |
+| 🟡 | [VPN Hotspot Arm64](https://github.com/nikakvo/vpn-hotspot-arm64) | Sends hotspot, USB and Bluetooth devices through the phone's VPN, with kill switch — Android's VPN only covers the phone's own apps |
+
+```
+device on your hotspot  /  app on the phone
+   │  DNS      → DNSCrypt Proxy   encrypted, filtered
+   │  traffic  → ipset            listed networks dropped
+   ▼  hotspot  → VPN Hotspot      into your VPN (kill switch)
+internet
+```
+
+- **Order is fixed and checked** by each module: DNSCrypt's hotspot filter → ipset → VPN Hotspot → Android. Nothing reaches the VPN around the two filters
+- **With all three**, hotspot devices get your filtered DNS (DNSCrypt's own queries travel inside the VPN), your IP blocklists and your VPN exit — on Wi-Fi and on mobile data
+- **VPN apps stay happy** — none of the three holds Android's firewall lock while checking, so WireGuard (`wg-quick`) and other VPN apps connect and disconnect without errors
+- **On its own** it blocks the listed networks for the phone and hotspot devices; DNS and routing stay as they are.
+
+**Tested together** on a Poco F6 Pro (vermeer), Xiaomi.eu ROM (HyperOS 3, Android 16), kernel [GKI_Kernel_SukiSU](https://github.com/nikakvo/GKI_Kernel_SukiSU) (SukiSU Ultra), with WireGuard (kernel backend) and v2rayNG; hotspot devices: a Windows laptop and a stock Android phone. Other devices should work but are not tested — reports welcome.
 
 ## Uninstall
 
