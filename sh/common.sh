@@ -60,6 +60,9 @@ IPT4="$(_tool iptables)"
 IPT6="$(_tool ip6tables)"
 RST4="$(_tool iptables-restore)"
 RST6="$(_tool ip6tables-restore)"
+# iptables-save reads the tables without the xtables lock (r11, see rules.sh)
+SAV4="$(_tool iptables-save)"
+SAV6="$(_tool ip6tables-save)"
 
 # ── Settings ─────────────────────────────────────────────────────────────────
 # Parsed, never sourced: only known keys, only plain values. A stray command

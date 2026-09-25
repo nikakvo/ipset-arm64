@@ -194,7 +194,7 @@ what_changed() {
 # the jumps if netd flushes later anyway.
 _w=0
 while [ "$_w" -lt "$NETD_WAIT" ]; do
-  if ipt 4 -S OUTPUT 2>/dev/null | grep -qE -- '-j (fw_OUTPUT|bw_OUTPUT|oem_out|st_OUTPUT)'; then
+  if ipt_dump 4 | grep -qE -- '^-A OUTPUT -j (fw_OUTPUT|bw_OUTPUT|oem_out|st_OUTPUT)$'; then
     break
   fi
   sleep 2

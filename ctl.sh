@@ -114,13 +114,19 @@ apply_and_report() {
 # one ipset call. Packet counters count since the rules were last applied
 # (every apply rebuilds the chains).
 _hits() { # <family> -> "out in fwd adv"
-  ipt "$1" -L -v -x -n 2>/dev/null | awk '
-    /^Chain / { c = $2; next }
-    c !~ /^IPSA_/ { next }
-    ($3 == "REJECT" || $3 == "DROP") {
-      if (c ~ /^IPSA_ADV_/) adv += $1
+  # r11: counters from "iptables-save -c" (no xtables lock), not "-L -v"
+  ipt_dump "$1" -c | awk '
+    $1 !~ /^\[/ || $2 != "-A" { next }
+    {
+      c = $3
+      if (c !~ /^IPSA_/) next
+      t = ""
+      for (k = 4; k < NF; k++) if ($k == "-j") { t = $(k + 1); break }
+      if (t != "REJECT" && t != "DROP") next
+      n = $1; sub(/^\[/, "", n); sub(/:.*/, "", n)
+      if (c ~ /^IPSA_ADV_/) adv += n
       else if (index($0, "ipsa_out") || index($0, "ipsa_in")) {
-        if (c == "IPSA_OUT") o += $1; else if (c == "IPSA_IN") i += $1; else if (c == "IPSA_FWD") f += $1
+        if (c == "IPSA_OUT") o += n; else if (c == "IPSA_IN") i += n; else if (c == "IPSA_FWD") f += n
       }
     }
     END { printf "%d %d %d %d\n", o, i, f, adv }'
@@ -223,7 +229,7 @@ cmd_status() {
     [ "$_s_f" = "6" ] && ! v6_supported && continue
     for _s_p in $IPSA_JUMPS; do
       _s_b=${_s_p%%:*}; _s_c=${_s_p#*:}
-      echo "jump${_s_f}_$(echo "$_s_b" | tr 'A-Z' 'a-z')=$(yn ipt "$_s_f" -C "$_s_b" -j "$_s_c")"
+      echo "jump${_s_f}_$(echo "$_s_b" | tr 'A-Z' 'a-z')=$([ "$(jump_count "$_s_f" "$_s_b" "$_s_c")" -gt 0 ] && echo 1 || echo 0)"
     done
   done
   echo "out_target=$OUT_TARGET"

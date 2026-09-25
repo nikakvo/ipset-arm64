@@ -2,6 +2,13 @@
 
 All notable changes to this module are documented here.
 
+## v7.24-r11
+
+Friendlier to VPN apps.
+
+* **No more firewall lock while checking.** Android's firewall has one global lock. VPN apps such as WireGuard (`wg-quick`) run their firewall commands without waiting for it and fail outright if anyone holds it at that moment — *"wg-quick returned 4"* or *"124"*, a tunnel that will not start or stop. The watchdog's check every 10 seconds, the dashboard's hit counters (refreshed every few seconds) and the status page read the tables with commands that can take the lock. They now use `iptables-save` (counters with `iptables-save -c`), which never takes it. Writing is unchanged: one `iptables-restore` per family, as before
+* The boot wait for Android's firewall setup reads without the lock too
+
 ## v7.24-r10
 
 The biggest release so far: the module becomes an IP blocklist with a new core, IPv6, a choice of lists, a new WebUI and a Help page. Settings, your sets and your rules carry over from r9 automatically.

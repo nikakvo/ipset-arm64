@@ -231,7 +231,7 @@ _fam_apply() { # <family> <active 0|1>
 
   # 4. Confirm: the chain holds what was written (not assumed).
   _fa_want=$(grep -c '^-A IPSA_OUT ' "$_fa_dir/full")
-  _fa_have=$(ipt "$_fa_f" -S IPSA_OUT 2>/dev/null | grep -c '^-A IPSA_OUT ')
+  _fa_have=$(ipt_dump "$_fa_f" | grep -c '^-A IPSA_OUT ')
   if [ "$_fa_want" != "$_fa_have" ]; then
     _fam_error "$_fa_f" "chain content not confirmed" "IPSA_OUT has $_fa_have rule(s) after apply, expected $_fa_want"
     unset _fa_f _fa_dir _fa_t _fa_want _fa_have _fa_r
@@ -270,10 +270,35 @@ _jumps_off() { # <family>
   unset _jf_p _jf_b _jf_c _jf_i
 }
 
+# ── Reading without the xtables lock (r11) ───────────────────────────────────
+# "iptables -S / -L / -C" can take the global xtables lock. VPN apps such as
+# WireGuard's wg-quick run iptables WITHOUT -w and fail outright if anyone
+# holds it at that instant ("wg-quick returned 4" / "124", measured on the
+# phone). The watchdog tick and the dashboard poll read the tables often,
+# so they read with iptables-save, which never takes the lock. Writing
+# (iptables-restore, -I/-D) is unchanged.
+ipt_dump() { # <family> [-c]  -> filter table, iptables-save format
+  if [ "$1" = "6" ]; then _dp_b=$SAV6; else _dp_b=$SAV4; fi
+  if [ -n "$_dp_b" ]; then
+    # shellcheck disable=SC2086
+    "$_dp_b" $2 -t filter 2>/dev/null
+  else
+    # no iptables-save: fall back to -S (same "-A ..." lines)
+    ipt "$1" -S 2>/dev/null
+  fi
+  unset _dp_b
+}
+
 # Everything of the module in one family's filter table, as one checksum.
-# One iptables call per family, so the watchdog can afford it every tick.
+# Only the "-A" lines: chain declarations differ between iptables-save and
+# -S, and a jump or rule is what matters.
 rules_sig() { # <family>
-  ipt "$1" -S 2>/dev/null | grep 'IPSA_' | cksum | tr -d ' \t'
+  ipt_dump "$1" | grep '^-A .*IPSA_' | cksum | tr -d ' \t'
+}
+
+# jump_present <family> <parent> <chain>, on a dump in $2... kept simple:
+jump_count() { # <family> <parent> <chain>
+  ipt_dump "$1" | awk -v j="-A $2 -j $3" '$0 == j { c++ } END { print c + 0 }'
 }
 
 v6_supported() { [ -n "$IPT6" ] && [ -n "$RST6" ]; }
